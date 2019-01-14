@@ -34,6 +34,15 @@ def random_tree(n):
         current_pos = next_pos
     return edges
 
+
+def make_connected(g):
+    comp = networkit.components.ConnectedComponents(g)
+    comp.run()
+    components = comp.getComponents()
+    for comp1, comp2 in zip(components, components[1:]):
+        g.addEdge(random.choice(comp1), random.choice(comp2))
+
+
 def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
     if f_a is None:
         f_a = goal_f(a)
@@ -107,25 +116,32 @@ def fit_ba(g, fully_connected_start):
     return ba
 
 def fit_chung_lu(g):
+    random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
-    return networkit.generators.ChungLuGenerator.fit(g).generate()
+    g = networkit.generators.ChungLuGenerator.fit(g).generate()
+    make_connected(g)
+    return g
 
 def fit_chung_lu_constant(g):
+    random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     alpha = powerlaw_fit(degrees)
-    gamma = max(alpha, 2.1)
-
+    
     k = 2 * g.numberOfEdges() / g.numberOfNodes()
     
     generator = networkit.generators.PowerlawDegreeSequence(g)
 
+    # Use the same gamma as the other algorithms 
+    gamma = max(alpha, 2.1)
     generator.setGamma(-gamma)
     generator.run()
     generator.setMinimumFromAverageDegree(max(generator.getExpectedAverageDegree(), k))
     
     degree_sequence = generator.run().getDegreeSequence(g.numberOfNodes())
     graph = networkit.generators.ChungLuGenerator(degree_sequence).generate()
+    make_connected(graph)
+    
     info_map = [
         ("n", g.numberOfNodes()),
         ("gamma", gamma),
@@ -133,9 +149,11 @@ def fit_chung_lu_constant(g):
     ]
     
     info = "|".join([name + "=" + str(val) for name, val in info_map])
+
     return (info, graph)
         
 def fit_hyperbolic(g):
+    random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     alpha = powerlaw_fit(degrees)
@@ -154,11 +172,13 @@ def fit_hyperbolic(g):
     def guess_goal(t):
         hyper_t = networkit.generators.HyperbolicGenerator(
             n_hyper, k, gamma, t).generate()
+        make_connected(hyper_t)
         hyper_t = shrink_to_giant_component(hyper_t)
         return criterium(hyper_t)
     t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
     hyper = networkit.generators.HyperbolicGenerator(
         n_hyper, k, gamma, t).generate()
+    make_connected(hyper)
     info_map = [
         ("n", n_hyper),
         ("k", k),
