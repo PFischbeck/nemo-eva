@@ -14,7 +14,7 @@ from abstract_stage import AbstractStage
 from graph_crawler import GraphCrawler
 from helpers.print_blocker import PrintBlocker
 from helpers.graph_analysis import shrink_to_giant_component, analyze
-from helpers.generators import fit_er, fit_ba, fit_chung_lu, fit_chung_lu_constant, fit_hyperbolic
+from helpers.generators import fit_er, fit_ba, fit_chung_lu, fit_chung_lu_constant, fit_hyperbolic, fit_girg
 
 def _execute_one_graph(graph_dict):
     in_path = (
@@ -67,7 +67,9 @@ def _execute_one_graph(graph_dict):
         ("chung-lu constant",
             fit_chung_lu_constant),
         ("hyperbolic",
-            fit_hyperbolic)
+            fit_hyperbolic),
+        ("girg",
+            fit_girg)
     ]
 
     outputs = []

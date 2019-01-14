@@ -3,6 +3,7 @@ import itertools
 import math
 import networkit
 import collections
+import pygirgs
 
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
@@ -35,12 +36,16 @@ def random_tree(n):
     return edges
 
 
+# Connect all other components to largest component
+# Choose random vertex each time
 def make_connected(g):
     comp = networkit.components.ConnectedComponents(g)
     comp.run()
     components = comp.getComponents()
-    for comp1, comp2 in zip(components, components[1:]):
-        g.addEdge(random.choice(comp1), random.choice(comp2))
+    largest_comp = max(components, key=len)
+    for comp1 in components:
+        if comp1 != largest_comp:
+            g.addEdge(random.choice(comp1), random.choice(largest_comp))
 
 
 def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
@@ -160,12 +165,11 @@ def fit_hyperbolic(g):
     gamma = max(alpha, 2.1)
     n, m = g.size()
     degree_counts = collections.Counter(degrees)
-    n_hyper = n + max(0, 2*degree_counts[1] - degree_counts[2])
+    #n_hyper = n + max(0, 2*degree_counts[1] - degree_counts[2])
+    n_hyper = n
     k = 2 * m / (n_hyper-1)
     def criterium(h):
-        #networkit.setLogLevel("WARN")
         val = networkit.globals.clustering(h)
-        #networkit.setLogLevel("INFO")
         return val
     goal = criterium(g)
 
@@ -187,3 +191,58 @@ def fit_hyperbolic(g):
     ]
     info = "|".join([name + "=" + str(val) for name, val in info_map])
     return (info, hyper)
+
+def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
+    generator = pygirgs.Generator()
+    generator.set_weights(n, -ple, wseed)
+    generator.set_positions(n, dimension, pseed)
+    generator.scale_weights(k, dimension, alpha)
+    generator.generate(alpha, sseed)
+
+    girg = networkit.Graph(n)
+    nodes = girg.nodes()
+
+    for u, v in girg.edge_list():
+        girg.addEdge(nodes[u], nodes[v])
+    
+    make_connected(girg)
+    return girg
+
+def fit_girg(g):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+    alpha = powerlaw_fit(degrees)
+    gamma = max(alpha, 2.1)
+    n, m = g.size()
+    n_est = n
+    k = 2 * m / n_est
+    def criterium(h):
+        val = networkit.globals.clustering(h)
+        return val
+    goal = criterium(g)
+
+    wseed = 42
+    pseed = 1234
+    sseed = 12345
+
+    dimension = 2
+
+    def guess_goal(t):
+        girg = generate_girg(n, dimension, k, t, gamma, wseed, pseed, sseed)
+        girg = shrink_to_giant_component(girg)
+        return criterium(girg)
+    t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
+
+    girg = generate_girg(n, dimension, k, t, gamma, wseed, pseed, sseed)
+    info_map = [
+        ("n", n_est),
+        ("k", k),
+        ("gamma", gamma),
+        ("t", t),
+        ("dimension", dimension)
+    ]
+    info = "|".join([name + "=" + str(val) for name, val in info_map])
+    return (info, girg)
+
+
