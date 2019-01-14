@@ -4,7 +4,7 @@ COPY requirements.txt /requirements.txt
 
 RUN apk --no-cache add --virtual build-deps \
         bash g++ freetype-dev gfortran lapack-dev \
-        libpng-dev make ncurses-dev readline-dev \
+        libpng-dev libexecinfo-dev make ncurses-dev readline-dev cmake \
  && cat requirements.txt | xargs -n 1 pip3 install \
  && apk del build-deps
 

@@ -9,7 +9,7 @@ matplotlib
 networkx==2.*
 ipython==7.1.*
 
-networkit==4.6
+networkit==5.0
 
 aiohttp
 backoff
