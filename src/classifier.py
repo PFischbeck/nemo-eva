@@ -40,14 +40,13 @@ def classification_experiment(df, network_models, features_collection, cores):
 
     accuracies = pandas.DataFrame()
 
-
+    pool = multiprocessing.pool.Pool(cores)
+    
     for network_model in network_models:
         network_model_mask = (df["Model"] == network_model) | (df["Model"] == "real-world")
-
         
         count = 0
         total = len(features_collection)
-        pool = multiprocessing.pool.Pool(cores)
         classifier_function = functools.partial(run_classifier, df=df, Y=Y, model=model, network_model_mask=network_model_mask)
         for features_name, cv_acc in pool.imap(classifier_function, sorted(features_collection.items())):
             accuracies.loc[network_model, features_name] = cv_acc
