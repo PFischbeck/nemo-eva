@@ -84,10 +84,10 @@ def _execute_one_graph(graph_dict):
         try:
             info1, model1 = model_converter(g)
             output1 = analyze(model1)
-            # Retry model based on 
+            # Regenerate model based on first iteration
             info2, model2 = model_converter(model1)
             output2 = analyze(model2)
-        except ZeroDivisionError as e:
+        except Exception as e:
             print("Error:", e, "for", model_name, "of", g.getName())
         else:
             output1["Graph"] = g.getName()

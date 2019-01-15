@@ -202,7 +202,7 @@ def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
     girg = networkit.Graph(n)
     nodes = girg.nodes()
 
-    for u, v in girg.edge_list():
+    for u, v in generator.edge_list():
         girg.addEdge(nodes[u], nodes[v])
     
     make_connected(girg)
@@ -229,12 +229,12 @@ def fit_girg(g):
     dimension = 2
 
     def guess_goal(t):
-        girg = generate_girg(n, dimension, k, t, gamma, wseed, pseed, sseed)
+        girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
         girg = shrink_to_giant_component(girg)
         return criterium(girg)
-    t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
+    t, crit_diff = binary_search(guess_goal, goal, 1.01, 9.0)
 
-    girg = generate_girg(n, dimension, k, t, gamma, wseed, pseed, sseed)
+    girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
     info_map = [
         ("n", n_est),
         ("k", k),

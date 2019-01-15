@@ -78,7 +78,7 @@ def _execute_one_graph(graph_dict):
         try:
             info, model = model_converter(g)
             output = analyze(model)
-        except ZeroDivisionError as e:
+        except Exception as e:
             print("Error:", e, "for", model_name, "of", g.getName(), model)
         else:
             output["Graph"] = g.getName()
