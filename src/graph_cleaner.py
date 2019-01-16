@@ -64,8 +64,10 @@ def _execute_one_graph(graph_dict):
 
     directory = os.path.dirname(out_path)
     if not os.path.exists(directory):
-        os.makedirs(directory)
-
+        try:
+            os.makedirs(directory)
+        except OSError as e:
+            pass
     networkit.writeGraph(g, out_path, networkit.Format.EdgeList, separator=" ", firstNode=0)
 
     return graph_dict
