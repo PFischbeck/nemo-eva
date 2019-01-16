@@ -11,14 +11,14 @@ import networkit
 import os
 
 from abstract_stage import AbstractStage
-from graph_crawler import GraphCrawler
+from graph_cleaner import GraphCleaner
 from helpers.print_blocker import PrintBlocker
 from helpers.graph_analysis import shrink_to_giant_component, analyze
 from helpers.generators import fit_er, fit_ba, fit_chung_lu, fit_chung_lu_constant, fit_hyperbolic, fit_girg
 
 def _execute_one_graph(graph_dict):
     in_path = (
-        GraphCrawler()._stagepath +
+        GraphCleaner._stagepath +
         graph_dict["Group"] + "/" +
         graph_dict["Path"])
     graph_type = graph_dict["Group"]
@@ -39,19 +39,8 @@ def _execute_one_graph(graph_dict):
     if not g:
         print("could not import graph from path", in_path)
         return []
-    if g.numberOfNodes() > 0 and g.numberOfEdges() > 0:
-        if g.degree(0) == 0:
-            g.removeNode(0)
 
     print("Graph", g.toString())
-    g = shrink_to_giant_component(g)
-    if g.numberOfNodes() < 100:
-        print(
-            "Graph is too small (" +
-            str(g.numberOfNodes()) +
-            " nodes, needs 100): " +
-            in_path)
-        return []
 
     model_types = [
         ("real-world",
