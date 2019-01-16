@@ -22,8 +22,6 @@ def _execute_one_graph(graph_dict):
         graph_dict["Group"] + "/" +
         graph_dict["Path"])
 
-    graph_type = graph_dict["Group"]
-
     g = None
     try:
         g = networkit.readGraph(
