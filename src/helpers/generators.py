@@ -68,21 +68,24 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
                 depth=depth+1)
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
-def fit_er(g):
+def fit_er(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
-    n, m = g.size()
 
-    p = ((2*m)/(n-1)-2)/(n-2)
+    if not connected:
+        return networkit.generators.ErdosRenyiGenerator.fit(g).generate()
+    else:
+        n, m = g.size()
+        p = ((2*m)/(n-1)-2)/(n-2)
 
-    graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
-    tree_edges = random_tree(n)
-    for u, v in tree_edges:
-        if not graph.hasEdge(graph.nodes()[u], graph.nodes()[v]):
-            graph.addEdge(graph.nodes()[u], graph.nodes()[v])
+        tree_edges = random_tree(n)
+        for u, v in tree_edges:
+            if not graph.hasEdge(graph.nodes()[u], graph.nodes()[v]):
+                graph.addEdge(graph.nodes()[u], graph.nodes()[v])
 
-    return graph
+        return graph
 
 def fit_ba(g, fully_connected_start):
     random.seed(42, version=2)
@@ -120,14 +123,15 @@ def fit_ba(g, fully_connected_start):
         edges_added += num_new_edges
     return ba
 
-def fit_chung_lu(g):
+def fit_chung_lu(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     g = networkit.generators.ChungLuGenerator.fit(g).generate()
-    make_connected(g)
+    if connected:
+       make_connected(g)
     return g
 
-def fit_chung_lu_constant(g):
+def fit_chung_lu_constant(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
@@ -145,7 +149,8 @@ def fit_chung_lu_constant(g):
     
     degree_sequence = generator.run().getDegreeSequence(g.numberOfNodes())
     graph = networkit.generators.ChungLuGenerator(degree_sequence).generate()
-    make_connected(graph)
+    if connected:
+        make_connected(graph)
     
     info_map = [
         ("n", g.numberOfNodes()),
@@ -157,7 +162,7 @@ def fit_chung_lu_constant(g):
 
     return (info, graph)
         
-def fit_hyperbolic(g):
+def fit_hyperbolic(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
@@ -165,8 +170,11 @@ def fit_hyperbolic(g):
     gamma = max(alpha, 2.1)
     n, m = g.size()
     degree_counts = collections.Counter(degrees)
-    #n_hyper = n + max(0, 2*degree_counts[1] - degree_counts[2])
-    n_hyper = n
+    if connected:
+        n_hyper = n
+    else:
+        n_hyper = n + max(0, 2*degree_counts[1] - degree_counts[2])
+    
     k = 2 * m / (n_hyper-1)
     def criterium(h):
         val = networkit.globals.clustering(h)
@@ -176,13 +184,15 @@ def fit_hyperbolic(g):
     def guess_goal(t):
         hyper_t = networkit.generators.HyperbolicGenerator(
             n_hyper, k, gamma, t).generate()
-        make_connected(hyper_t)
+        if connected:
+            make_connected(hyper_t)
         hyper_t = shrink_to_giant_component(hyper_t)
         return criterium(hyper_t)
     t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
     hyper = networkit.generators.HyperbolicGenerator(
         n_hyper, k, gamma, t).generate()
-    make_connected(hyper)
+    if connected:
+        make_connected(hyper)
     info_map = [
         ("n", n_hyper),
         ("k", k),
@@ -205,10 +215,9 @@ def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
     for u, v in generator.edge_list():
         girg.addEdge(nodes[u], nodes[v])
     
-    make_connected(girg)
     return girg
 
-def fit_girg(g):
+def fit_girg(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
@@ -230,11 +239,15 @@ def fit_girg(g):
 
     def guess_goal(t):
         girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
+        if connected:
+            make_connected(girg)
         girg = shrink_to_giant_component(girg)
         return criterium(girg)
     t, crit_diff = binary_search(guess_goal, goal, 1.01, 9.0)
 
     girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
+    if connected:
+        make_connected(girg)
     info_map = [
         ("n", n_est),
         ("k", k),
