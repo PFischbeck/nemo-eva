@@ -43,7 +43,7 @@ def _execute_one_graph(graph_dict):
 
     outputs = []
 
-    model_name = "chung-lu"
+    model_name = "chung-lu constant"
     model_converter = lambda g: fit_chung_lu_constant(g, connected=True)
 
     try:
@@ -63,7 +63,7 @@ def _execute_one_graph(graph_dict):
 
 
 class GeneratorChungLuConstant(AbstractStage):
-    _stage = "2-features/chung-lu"
+    _stage = "2-features/chung-lu constant"
 
     def __init__(self, graph_dicts, cores=1, **kwargs):
         super(GeneratorChungLuConstant, self).__init__()
