@@ -14,7 +14,7 @@ from helpers.print_blocker import PrintBlocker
 from helpers.graph_analysis import shrink_to_giant_component
 
 def is_graph_ok(g):
-    return 100 <= g.numberOfNodes() <= 2*10**6 and 100 <= g.numberOfEdges() <= 2*10**7
+    return 100 <= g.numberOfNodes() <= 5*10**5 and 100 <= g.numberOfEdges() <= 5*10**6
 
 def _execute_one_graph(graph_dict):
     in_path = (
