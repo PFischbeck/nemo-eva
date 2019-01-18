@@ -10,9 +10,10 @@ from helpers import dicts_to_df
 class FeatureCleaner(AbstractStage):
     _stage = "3-cleaned_features"
 
-    def __init__(self, features, **kwargs):
+    def __init__(self, features, base_model="real-world", **kwargs):
         super(FeatureCleaner, self).__init__()
         self.features = features
+        self.base_model = base_model
 
     def _execute(self):
         df = dicts_to_df(self.features)
@@ -36,10 +37,10 @@ class FeatureCleaner(AbstractStage):
         print(features.name + ":", len(features), "( unfiltered:", len(df.columns), ")")
 
         # clean missing models
-        df_real = df_features_cleaned[df_features_cleaned["Model"] == "real-world"]
+        df_real = df_features_cleaned[df_features_cleaned["Model"] == self.base_model]
         real_graphs = set(df_real.index)
         complete_graphs = real_graphs.copy()
-        for model in set(df_features_cleaned["Model"]) - set("real-world"):
+        for model in set(df_features_cleaned["Model"]) - set(self.base_model):
             graphs_for_model = set(df_features_cleaned[df_features_cleaned["Model"] == model].index)
             if graphs_for_model != real_graphs:
                 print("missing graphs for", model, "model:", real_graphs-graphs_for_model)
@@ -49,7 +50,7 @@ class FeatureCleaner(AbstractStage):
         print(df_cleaned.index.name + ":", len(df_cleaned.index), "( unfiltered:", len(df_features_cleaned.index), ")")
 
         # clean with filter rules
-        df_real = df_cleaned[df_cleaned["Model"] == "real-world"]
+        df_real = df_cleaned[df_cleaned["Model"] == self.base_model]
         filters = {
             "CC = 0": df_real["Centrality.ClusteringCoefficient.Location.Arithmetic Mean"] == 0,
             "edges < 500": df_real["Edges"] < 500,

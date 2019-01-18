@@ -3,6 +3,7 @@ from helpers import dicts_to_df, format_feature_df
 from helpers.classification import Classification
 from helpers.feature_sets import get_all_feature_sets
 
+import argparse
 import collections
 import functools
 import multiprocessing
@@ -22,7 +23,7 @@ def run_classifier(params, df, Y, model, network_model_mask):
     cv_acc = c.results["cv"]["accuracy"]
     return features_name, cv_acc
 
-def classification_experiment(df, network_models, features_collection, cores):
+def classification_experiment(df, to_compare, features_collection, cores):
     Y = df["Model"]
 
     model = {
@@ -41,15 +42,15 @@ def classification_experiment(df, network_models, features_collection, cores):
     accuracies = pandas.DataFrame()
 
     pool = multiprocessing.pool.Pool(cores)
-    
-    for network_model in network_models:
-        network_model_mask = (df["Model"] == network_model) | (df["Model"] == "real-world")
+
+    for model1, model2 in to_compare:
+        network_model_mask = (df["Model"] == model1) | (df["Model"] == model2)
         
         count = 0
         total = len(features_collection)
         classifier_function = functools.partial(run_classifier, df=df, Y=Y, model=model, network_model_mask=network_model_mask)
         for features_name, cv_acc in pool.imap(classifier_function, sorted(features_collection.items())):
-            accuracies.loc[network_model, features_name] = cv_acc
+            accuracies.loc[model1, features_name] = cv_acc
             count += 1
             print("{}/{} feature sets done!".format(count, total))
     else:
@@ -60,45 +61,32 @@ def classification_experiment(df, network_models, features_collection, cores):
 class Classifier(AbstractStage):
     _stage = "4-classification_results"
 
-    def __init__(self, features, cores=1, **kwargs):
+    def __init__(self, features, to_compare, classification_name, cores=1, **kwargs):
         super(Classifier, self).__init__()
         self.features = features
         self.cores = cores
+        self.to_compare = to_compare
+        self.classification_name = classification_name
 
     def _execute(self):
         df = dicts_to_df(self.features)
         format_feature_df(df)
 
-        df_real = df[df["Model"] == "real-world"]
         print(collections.Counter(df["Model"]))
 
-        small_avg_degree = df_real["Centrality.Degree.Location.Arithmetic Mean"] <= 30
+        # TODO Option to filter for some graphs
+        graphs = sorted(set(df["Graph"]))
 
-        filters = {
-            "all": [True] * len(df_real),
-            "avg-degree-le-30": small_avg_degree,
-            "avg-degree-gt-30": ~small_avg_degree,
-            "socfb":     df_real["Type"] == "socfb",
-            "not-socfb": df_real["Type"] != "socfb"
-        }
-
-        format_str = "{:20}{:>5}"
-        network_models = sorted(set(df["Model"])-set(["real-world"]))
-
-        for filtername, filterdf in sorted(filters.items()):
-            graphs = sorted(df_real[filterdf]["Graph"])
-            print(format_str.format(filtername, len(graphs)))
-
-            features_collection = get_all_feature_sets(df, graphs)
-            sub_df = df.loc(axis=0)[:, graphs, :]
-            accuracies = \
-                classification_experiment(
-                    sub_df,
-                    network_models,
-                    features_collection,
-                    self.cores)
-            accuracies.to_csv(
-                self._stagepath + "accuracies/" + filtername + ".csv",
-                header=True,
-                index_label="features"
-            )
+        features_collection = get_all_feature_sets(df, graphs)
+        sub_df = df.loc(axis=0)[:, graphs, :]
+        accuracies = \
+            classification_experiment(
+                sub_df,
+                self.to_compare,
+                features_collection,
+                self.cores)
+        accuracies.to_csv(
+            self._stagepath + "accuracies/" + self.classification_name + ".csv",
+            header=True,
+            index_label="features"
+        )
