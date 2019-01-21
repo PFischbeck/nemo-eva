@@ -2,6 +2,7 @@ import argparse
 import csv
 
 from generator_er_comp import GeneratorERComp
+from generator_chunglu_comp import GeneratorChungLuComp
 from generator_real_world import GeneratorRealWorld
 from generator_er import GeneratorER
 from generator_ba_circle import GeneratorBACircle
@@ -12,6 +13,20 @@ from generator_hyperbolic import GeneratorHyperbolic
 from generator_girg import GeneratorGIRG
 from feature_cleaner import FeatureCleaner
 from classifier import Classifier
+
+def run_chunglu_comp(cores):
+    with open(GeneratorChungLuComp.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="ER", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("chung-lu", "chung-lu-connected")]
+    name = "chung-lu-comp"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
+
 
 def run_er_comp(cores):
     with open(GeneratorERComp.resultspath) as f:
@@ -72,11 +87,18 @@ def run_compare_all(cores):
     classifier.execute()
 
 def main():
+    experiments = {
+        "compare_all": run_compare_all,
+        "er_comp": run_er_comp,
+        "chunglu_comp": run_chunglu_comp
+    }
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--cores', type=int, default=1)
+    parser.add_argument('--experiment', choices=experiments.keys(), default="compare_all")
     args = parser.parse_args()
 
-    experiment = run_compare_all
+    experiment = experiments[args.experiment]
     experiment(args.cores)
 
 
