@@ -217,7 +217,7 @@ def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
     
     return girg
 
-def fit_girg(g, connected=False):
+def fit_girg(g, dimension=1, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
@@ -234,8 +234,6 @@ def fit_girg(g, connected=False):
     wseed = 42
     pseed = 1234
     sseed = 12345
-
-    dimension = 2
 
     def guess_goal(t):
         girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
