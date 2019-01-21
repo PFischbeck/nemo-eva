@@ -13,7 +13,7 @@ import os
 from abstract_stage import AbstractStage
 from graph_cleaner import GraphCleaner
 from helpers.graph_analysis import analyze, shrink_to_giant_component
-from helpers.generators import fit_er
+from helpers.generators import fit_chung_lu
 
 def _execute_one_graph(graph_dict):
     in_path = (
@@ -42,14 +42,13 @@ def _execute_one_graph(graph_dict):
     print("Graph", g.toString())
 
     outputs = []
-
-    model_name = "ER"
+    model_name = "chung-lu"
 
     try:
-        info, model = "", fit_er(g, connected=False)
+        info, model = "", fit_chung_lu(g, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
-        info2, model2 = "", fit_er(model, connected=True)
+        info2, model2 = "", fit_chung_lu(model, connected=True)
         output2 = analyze(model2)
     except Exception as e:
         print("Error:", e, "for", model_name, "of", g.getName(), model)
@@ -69,11 +68,11 @@ def _execute_one_graph(graph_dict):
     return outputs
 
 
-class GeneratorERComp(AbstractStage):
-    _stage = "2-features/er-comp"
+class GeneratorChungLuComp(AbstractStage):
+    _stage = "2-features/chung-lu-comp"
 
     def __init__(self, graph_dicts, cores=1, **kwargs):
-        super(GeneratorERComp, self).__init__()
+        super(GeneratorChungLuComp, self).__init__()
         self.graph_dicts = graph_dicts
         self.cores = cores
         networkit.engineering.setNumberOfThreads(1)
@@ -99,7 +98,7 @@ def main():
 
     with open(GraphCleaner.resultspath) as input_dicts_file:
         graph_dicts = list(csv.DictReader(input_dicts_file))
-    generator = GeneratorERComp(graph_dicts, cores=args.cores)
+    generator = GeneratorChungLuComp(graph_dicts, cores=args.cores)
     generator.execute()
 
 
