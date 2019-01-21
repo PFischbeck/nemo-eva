@@ -17,7 +17,7 @@ from classifier import Classifier
 def run_chunglu_comp(cores):
     with open(GeneratorChungLuComp.resultspath) as f:
         features = list(csv.DictReader(f))
-    feature_cleaner = FeatureCleaner(features, base_model="ER", cores=cores)
+    feature_cleaner = FeatureCleaner(features, base_model="chung-lu", cores=cores)
     feature_cleaner.execute()
     with open(FeatureCleaner.resultspath) as input_dicts_file:
         result = list(csv.DictReader(input_dicts_file))
