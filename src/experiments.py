@@ -8,6 +8,8 @@ from generator_ba_circle import GeneratorBACircle
 from generator_ba_full import GeneratorBAFull
 from generator_chunglu import GeneratorChungLu
 from generator_chunglu_constant import GeneratorChungLuConstant
+from generator_hyperbolic import GeneratorHyperbolic
+from generator_girg import GeneratorGIRG
 from feature_cleaner import FeatureCleaner
 from classifier import Classifier
 
@@ -44,13 +46,27 @@ def run_compare_all(cores):
 
     with open(GeneratorChungLuConstant.resultspath) as f:
         features.extend(list(csv.DictReader(f)))
+
+    with open(GeneratorHyperbolic.resultspath) as f:
+        features.extend(list(csv.DictReader(f)))
         
+    with open(GeneratorGIRG.resultspath) as f:
+        features.extend(list(csv.DictReader(f)))
+
     feature_cleaner = FeatureCleaner(features, base_model="real-world", cores=cores)
     feature_cleaner.execute()
     with open(FeatureCleaner.resultspath) as input_dicts_file:
         result = list(csv.DictReader(input_dicts_file))
         
-    to_compare = [("ER", "real-world"), ("BA full", "real-world"), ("BA circle", "real-world"), ("chung-lu", "real-world"), ("chung-lu constant", "real-world")]
+    to_compare = [
+        ("ER", "real-world"),
+        ("BA full", "real-world"),
+        ("BA circle", "real-world"),
+        ("chung-lu", "real-world"),
+        ("chung-lu constant", "real-world"),
+        ("hyperbolic", "real-world"),
+        ("girg-1d", "real-world")
+    ]
     name = "compare_all"
     classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
     classifier.execute()
