@@ -8,32 +8,21 @@ import pygirgs
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
 
-# Generate a random tree, return the edge list
+# Generate a random tree, return the graph
 # Based on the Aldous-Broder algorithm, but modified for a complete graph
 # TODO: Currently runs in O(n log n).
 def random_tree(n):
-    edges = []
+    t = networkit.Graph(n)
+    nodes = t.nodes()
     vertices = list(range(n))
     random.shuffle(vertices)
-    current_pos = 0
     visited_count = 1
     while visited_count < n:
-
-        # Repeat random walk until we see new vertex
-        while True:
-            potential_next = random.randrange(n)
-            if potential_next == current_pos:
-                continue
-            if potential_next >= visited_count:
-                break
-            
-            current_pos = potential_next
-
-        next_pos = visited_count
-        edges.append((vertices[current_pos], vertices[next_pos]))
+        pos1 = random.randrange(visited_count)
+        pos2 = visited_count
+        t.addEdge(nodes[vertices[pos1]], nodes[vertices[pos2]])
         visited_count += 1
-        current_pos = next_pos
-    return edges
+    return t
 
 
 # Connect all other components to largest component
@@ -80,10 +69,8 @@ def fit_er(g, connected=False):
 
         graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
-        tree_edges = random_tree(n)
-        for u, v in tree_edges:
-            if not graph.hasEdge(graph.nodes()[u], graph.nodes()[v]):
-                graph.addEdge(graph.nodes()[u], graph.nodes()[v])
+        t = random_tree(n)
+        graph.merge(t)
 
         return graph
 
