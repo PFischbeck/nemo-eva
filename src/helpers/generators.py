@@ -169,12 +169,16 @@ def fit_hyperbolic(g, connected=False):
     goal = criterium(g)
 
     def guess_goal(t):
-        hyper_t = networkit.generators.HyperbolicGenerator(
-            n_hyper, k, gamma, t).generate()
-        if connected:
-            make_connected(hyper_t)
-        hyper_t = shrink_to_giant_component(hyper_t)
-        return criterium(hyper_t)
+        iterations = 10
+        results = []
+        for _ in range(iterations):
+            hyper_t = networkit.generators.HyperbolicGenerator(
+                n_hyper, k, gamma, t).generate()
+            if connected:
+                make_connected(hyper_t)
+            hyper_t = shrink_to_giant_component(hyper_t)
+            results.append(criterium(hyper_t))
+        return sum(results)/len(results)
     t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
     hyper = networkit.generators.HyperbolicGenerator(
         n_hyper, k, gamma, t).generate()
@@ -223,11 +227,15 @@ def fit_girg(g, dimension=1, connected=False):
     sseed = 12345
 
     def guess_goal(t):
-        girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
-        if connected:
-            make_connected(girg)
-        girg = shrink_to_giant_component(girg)
-        return criterium(girg)
+        iterations = 10
+        results = []
+        for _ in range(iterations):
+            girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
+            if connected:
+                make_connected(girg)
+            girg = shrink_to_giant_component(girg)
+            results.append(criterium(hyper_t))
+        return sum(results)/len(results)
     t, crit_diff = binary_search(guess_goal, goal, 1.01, 9.0)
 
     girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
