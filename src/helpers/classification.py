@@ -8,7 +8,7 @@ class Classification:
     def __init__(self, X, Y, model, cv_grid=None):
         assert numpy.isfinite(X).all().all()
 
-        n_splits = 3
+        n_splits = 5
         cv = StratifiedShuffleSplit(n_splits=n_splits, test_size=1/n_splits, random_state=0)
 
         if cv_grid:
