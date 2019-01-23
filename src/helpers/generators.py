@@ -234,7 +234,7 @@ def fit_girg(g, dimension=1, connected=False):
             if connected:
                 make_connected(girg)
             girg = shrink_to_giant_component(girg)
-            results.append(criterium(hyper_t))
+            results.append(criterium(girg))
         return sum(results)/len(results)
     t, crit_diff = binary_search(guess_goal, goal, 1.01, 9.0)
 
