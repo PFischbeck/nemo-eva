@@ -1,14 +1,15 @@
 import numpy
 
 from sklearn.model_selection import \
-    cross_val_predict, GridSearchCV, permutation_test_score
+    cross_val_score, GridSearchCV, StratifiedShuffleSplit
 
 
 class Classification:
     def __init__(self, X, Y, model, cv_grid=None):
         assert numpy.isfinite(X).all().all()
 
-        cv = 3
+        n_splits = 3
+        cv = StratifiedShuffleSplit(n_splits=n_splits, test_size=1/n_splits, random_state=0)
 
         if cv_grid:
             grid_search = GridSearchCV(
@@ -19,11 +20,7 @@ class Classification:
         else:
             self.best_params = None
 
-        self.results = {
-            "cv":   {"prediction": cross_val_predict(model, X, Y, cv=cv)}
-        }
 
-        for result in self.results.values():
-            mask = (Y != result["prediction"])
-            result["mask"] = mask
-            result["accuracy"] = sum(~mask)/len(mask)
+        # Final test with different splits
+        cv2 = StratifiedShuffleSplit(n_splits=n_splits, test_size=1/n_splits, random_state=42)
+        self.accuracy = cross_val_score(model, X, Y, cv=cv2).mean()

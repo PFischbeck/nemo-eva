@@ -20,7 +20,7 @@ def run_classifier(params, df, Y, model, network_model_mask):
         Y.loc[network_model_mask],
         **model
     )
-    cv_acc = c.results["cv"]["accuracy"]
+    cv_acc = c.accuracy
     return features_name, cv_acc
 
 def classification_experiment(df, to_compare, features_collection, cores):
