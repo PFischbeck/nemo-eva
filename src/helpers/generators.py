@@ -57,22 +57,28 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
                 depth=depth+1)
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
-def fit_er(g, connected=False):
+def generate_er(n, p, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
 
-    if not connected:
-        return networkit.generators.ErdosRenyiGenerator.fit(g).generate()
-    else:
-        n, m = g.size()
-        p = ((2*m)/(n-1)-2)/(n-2)
+    if connected:
+        p = (p*n - 2)/(n - 2)
 
-        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+    graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
+    if connected:
         t = random_tree(n)
         graph.merge(t)
 
-        return graph
+    return graph
+
+
+def fit_er(g, connected=False):
+    n, m = g.size()
+    p = (2*m)/(n*(n-1))
+    
+    return generate_er(n, p, connected)
+
 
 def fit_ba(g, fully_connected_start):
     random.seed(42, version=2)
