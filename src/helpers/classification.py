@@ -21,6 +21,5 @@ class Classification:
             self.best_params = None
 
 
-        # Final test with different splits
-        cv2 = StratifiedShuffleSplit(n_splits=n_splits, test_size=1/n_splits, random_state=42)
-        self.accuracy = cross_val_score(model, X, Y, cv=cv2).mean()
+        # Final score
+        self.accuracy = cross_val_score(model, X, Y, cv=cv).mean()
