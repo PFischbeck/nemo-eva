@@ -106,7 +106,7 @@ feature_order = [
     i + ".Location.3rd Quartile" for i in important_groups
 ] + [
     i + ".Location.Median" for i in important_groups
-]
+] + ["Partition.CoreDecomposition.Dispersion.Uncorrected Standard Deviation"]
 
 
 def print_smallest_grouped_corr(corr, labels):

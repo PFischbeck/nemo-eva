@@ -5,7 +5,7 @@ from functools import reduce
 
 from abstract_stage import AbstractStage
 from helpers import dicts_to_df
-
+from helpers import feature_sets
 
 class FeatureCleaner(AbstractStage):
     _stage = "3-cleaned_features"
@@ -26,10 +26,10 @@ class FeatureCleaner(AbstractStage):
         object_cols = df.columns[df.dtypes == numpy.object]
         df[object_cols] = df[object_cols].astype(str)
 
-        # clean features
+        # clean features we don't need
         valid_cols = [
             col for col in df.axes[1]
-            if not any(i in col for i in ["Binning", "Interquartile Range", "Sample Range", "Bessel's Correction"])
+            if col in feature_sets.feature_order + ["Graph", "Info", "Model", "Type"]
         ]
         df_features_cleaned = df[valid_cols]
 
@@ -71,17 +71,6 @@ class FeatureCleaner(AbstractStage):
         df_rule_filtered = df_cleaned.loc[df_real[~all_filters].index].copy()
         print(format.format("total filtered", len(df_real[~all_filters])))
         assert(len(df_real[~all_filters]) == len(df_rule_filtered) / len(set(df_rule_filtered["Model"])))
-
-        # originally weighted
-        print()
-        print(
-            "filter originally weighted graphs",
-            df_rule_filtered[df_rule_filtered["Originally Weighted"]].index.tolist())
-        df_rule_filtered.drop("Originally Weighted", axis=1, inplace=True)  # remove feature
-
-        # should only be one giant single component
-        single_connected_component = df_rule_filtered["Partition.ConnectedComponents.Properties.Size"] == 1
-        assert numpy.all(single_connected_component)
 
         # clean notfinite features
         def notfinite(a_df):
