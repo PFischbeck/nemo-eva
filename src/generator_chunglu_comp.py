@@ -13,53 +13,37 @@ import os
 from abstract_stage import AbstractStage
 from graph_cleaner import GraphCleaner
 from helpers.graph_analysis import analyze, shrink_to_giant_component
-from helpers.generators import fit_chung_lu
+from helpers.generators import generate_chung_lu_constant
 
-def _execute_one_graph(graph_dict):
-    in_path = (
-        GraphCleaner._stagepath +
-        graph_dict["Group"] + "/" +
-        graph_dict["Path"])
-    graph_type = graph_dict["Group"]
+def _execute_one_graph(parameters):
+    n, min_deg, max_deg, k, gamma = parameters
 
-    g = None
-    try:
-        g = networkit.readGraph(
-            in_path,
-            networkit.Format.EdgeList,
-            separator=" ",
-            firstNode=0,
-            commentPrefix="%",
-            continuous=True)
-    except Exception as e:
-        print(e)
-        return []
+    graph_type = "parameters"
 
-    if not g:
-        print("could not import graph from path", in_path)
-        return []
+    name = "CL:n={},min_deg={};max_deg={};k={};gamma={}".format(n, min_deg, max_deg, k, gamma)
 
-    print("Graph", g.toString())
+    print("Graph", name)
 
     outputs = []
+
     model_name = "chung-lu"
 
     try:
-        info, model = "", fit_chung_lu(g, connected=False)
+        info, model = "", generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
-        info2, model2 = "", fit_chung_lu(model, connected=True)
+        info2, model2 = "", generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected=True)
         output2 = analyze(model2)
     except Exception as e:
-        print("Error:", e, "for", model_name, "of", g.getName(), model)
+        print("Error:", e, "for", model_name, "of", name)
     else:
-        output["Graph"] = g.getName()
+        output["Graph"] = name
         output["Type"] = graph_type
         output["Model"] = model_name
         output["Info"] = info
         outputs.append(output)
 
-        output2["Graph"] = g.getName()
+        output2["Graph"] = name
         output2["Type"] = graph_type
         output2["Model"] = model_name+"-connected"
         output2["Info"] = info2
@@ -96,9 +80,15 @@ def main():
     parser.add_argument('--cores', type=int, default=1)
     args = parser.parse_args()
 
-    with open(GraphCleaner.resultspath) as input_dicts_file:
-        graph_dicts = list(csv.DictReader(input_dicts_file))
-    generator = GeneratorChungLuComp(graph_dicts, cores=args.cores)
+    parameters = []
+    min_deg = 1
+    for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000))+list(range(100000, 500000, 100000)):
+        for k in range(5, 100, 5):
+            max_deg = k * 5
+            for gamma in [2.1, 2.3, 2.5, 2.7, 2.9, 3.1]:
+                parameters.append((n, min_deg, max_deg, k, gamma))
+
+    generator = GeneratorChungLuComp(parameters, cores=args.cores)
     generator.execute()
 
 
