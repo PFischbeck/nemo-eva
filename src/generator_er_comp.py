@@ -83,7 +83,7 @@ def main():
     #    graph_dicts = list(csv.DictReader(input_dicts_file))
     parameters = []
     for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000))+list(range(100000, 500000, 100000)):
-        for d in range(5, 100, 5):
+        for d in range(2.5, 10, 0.5):
             p = (d * n) / (n * (n-1))
             parameters.append((n, p))
 

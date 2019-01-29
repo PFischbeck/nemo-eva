@@ -83,7 +83,7 @@ def main():
     parameters = []
     min_deg = 1
     for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000))+list(range(100000, 500000, 100000)):
-        for k in range(5, 100, 5):
+        for k in range(2.5, 10, 0.5):
             max_deg = k * 5
             for gamma in [2.1, 2.3, 2.5, 2.7, 2.9, 3.1]:
                 parameters.append((n, min_deg, max_deg, k, gamma))
