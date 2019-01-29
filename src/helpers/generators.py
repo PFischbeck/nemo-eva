@@ -9,8 +9,6 @@ from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
 
 # Generate a random tree, return the graph
-# Based on the Aldous-Broder algorithm, but modified for a complete graph
-# TODO: Currently runs in O(n log n).
 def random_tree(n):
     t = networkit.Graph(n)
     nodes = t.nodes()
@@ -57,6 +55,7 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
                 depth=depth+1)
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
+
 def generate_er(n, p, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
@@ -80,10 +79,9 @@ def fit_er(g, connected=False):
     return generate_er(n, p, connected)
 
 
-def fit_ba(g, fully_connected_start):
+def generate_ba(n, m, fully_connected_start):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
-    n, m = g.size()
     m_0 = math.ceil(m / n)
     ba = networkit.Graph(n)
     nodes = ba.nodes()
@@ -116,34 +114,85 @@ def fit_ba(g, fully_connected_start):
         edges_added += num_new_edges
     return ba
 
-def fit_chung_lu(g, connected=False):
+
+def fit_ba(g, fully_connected_start):
+    n, m = g.size()
+    return generate_ba(n, m, fully_connected_start)
+
+
+def generate_chung_lu(degrees, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
-    g = networkit.generators.ChungLuGenerator.fit(g).generate()
+
     if connected:
-       make_connected(g)
-    return g
+        tree = random_tree(len(degrees))
+
+        tree_degs = networkit.centrality.DegreeCentrality(tree).run().scores()
+        tree_indices = list(range(len(degrees)))
+        tree_indices.sort(key=lambda i: tree_degs[i])
+
+
+        degrees.sort()
+        new_degrees = [0] * len(degrees)
+
+        diff = 0
+        for tree_index, degree in zip(tree_indices, degrees):
+            tree_deg = tree_degs[tree_index]
+
+            # if degree >= tree_deg --> we can set degree accordingly and keep some of the diff
+            if degree - tree_deg >= 0:
+                new_degrees[tree_index] = max(0, degree - tree_deg - diff)
+                diff -= min(degree - tree_deg, diff)
+            else:
+                new_degrees[tree_index] = 0
+                diff += tree_deg - degree
+
+        # new_degrees: degrees for chung-Lu generation, in the same order as in the tree
+        cl_to_tree = list(range(len(degrees)))
+        cl_to_tree.sort(key=lambda i: new_degrees[i], reverse=True)
+        # cl_to_tree: indices of the nodes in tree, sorted decreasing by degree for chung-lu generation
+        tree_to_cl = [0] * len(degrees)
+        for cl_index, tree_index in enumerate(cl_to_tree):
+            tree_to_cl[tree_index] = cl_index
+        graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
+        for u, v in tree.edges():
+            if not graph.hasEdge(tree_to_cl[u], tree_to_cl[v]):
+                graph.addEdge(tree_to_cl[u], tree_to_cl[v])
+        return graph
+
+
+    else:
+        return networkit.generators.ChungLuGenerator(degrees).generate()
+
+
+def generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected):
+    generator = networkit.generators.PowerlawDegreeSequence(min_deg, max_deg, -gamma)
+    
+    generator.setGamma(-gamma)
+    generator.run()
+    generator.setMinimumFromAverageDegree(max(generator.getExpectedAverageDegree(), k))
+    
+    degree_sequence = generator.run().getDegreeSequence(n)
+    
+    graph = generate_chung_lu(degree_sequence, connected)
+
+    return graph
+
+def fit_chung_lu(g, connected=False):
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+    return generate_chung_lu(degrees, connected)
+
 
 def fit_chung_lu_constant(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     alpha = powerlaw_fit(degrees)
+    gamma = max(alpha, 2.1)
     
     k = 2 * g.numberOfEdges() / g.numberOfNodes()
-    
-    generator = networkit.generators.PowerlawDegreeSequence(g)
-
-    # Use the same gamma as the other algorithms 
-    gamma = max(alpha, 2.1)
-    generator.setGamma(-gamma)
-    generator.run()
-    generator.setMinimumFromAverageDegree(max(generator.getExpectedAverageDegree(), k))
-    
-    degree_sequence = generator.run().getDegreeSequence(g.numberOfNodes())
-    graph = networkit.generators.ChungLuGenerator(degree_sequence).generate()
-    if connected:
-        make_connected(graph)
+       
+    graph = generate_chung_lu_constant(g.numberOfNodes(), min(degrees), max(degrees), k, gamma, connected)
     
     info_map = [
         ("n", g.numberOfNodes()),
@@ -155,6 +204,7 @@ def fit_chung_lu_constant(g, connected=False):
 
     return (info, graph)
         
+
 def fit_hyperbolic(g, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
@@ -199,6 +249,7 @@ def fit_hyperbolic(g, connected=False):
     info = "|".join([name + "=" + str(val) for name, val in info_map])
     return (info, hyper)
 
+
 def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
     generator = pygirgs.Generator()
     generator.set_weights(n, -ple, wseed)
@@ -213,6 +264,7 @@ def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
         girg.addEdge(nodes[u], nodes[v])
     
     return girg
+
 
 def fit_girg(g, dimension=1, connected=False):
     random.seed(42, version=2)
