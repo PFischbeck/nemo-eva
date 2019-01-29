@@ -86,7 +86,7 @@ class FeatureCleaner(AbstractStage):
 
         valid_cols = set(df_finite_filtered.columns)
         # normalized coefficient of variation:
-        variation = df_finite_filtered.std() / df_finite_filtered.mean() / (len(df_finite_filtered)-1)**0.5
+        variation = df_finite_filtered.std() / df_finite_filtered.mean()
         low_variation_cols = set(variation[(variation < 0.01) | variation.isnull()].index)
         print("filtering cols (low variation):")
         for col in sorted(low_variation_cols):
