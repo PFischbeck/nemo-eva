@@ -1,9 +1,10 @@
 import random
+import bisect
 import itertools
 import math
 import networkit
 import collections
-import pygirgs
+#import pygirgs
 
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
@@ -22,18 +23,25 @@ def random_tree(n):
         visited_count += 1
     return t
 
+def random_weighted(choices, weights):
+    cumdist = list(itertools.accumulate(weights))
+    x = random.random() * cumdist[-1]
+    return choices[bisect.bisect(cumdist, x)]
 
 # Connect all other components to largest component
-# Choose random vertex each time
+# Choose random vertex each time, weighted by degree
 def make_connected(g):
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     comp = networkit.components.ConnectedComponents(g)
     comp.run()
     components = comp.getComponents()
     largest_comp = max(components, key=len)
+    largest_comp_degs = [degrees[i] for i in largest_comp]
     for comp1 in components:
         if comp1 != largest_comp:
-            g.addEdge(random.choice(comp1), random.choice(largest_comp))
-
+            comp_degs = [degrees[i] for i in comp1]
+            g.addEdge(random_weighted(comp1, comp_degs), random_weighted(largest_comp, largest_comp_degs))
+            
 
 def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
     if f_a is None:
@@ -205,31 +213,25 @@ def fit_chung_lu_constant(g, connected=False):
     return (info, graph)
         
 
-def fit_hyperbolic(g, connected=False):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
-    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
-    alpha = powerlaw_fit(degrees)
-    gamma = max(alpha, 2.1)
-    n, m = g.size()
-    degree_counts = collections.Counter(degrees)
+def generate_hyperbolic(n, m, gamma, cc, connected):
     if connected:
-        n_hyper = n
-    else:
-        n_hyper = n + max(0, 2*degree_counts[1] - degree_counts[2])
-    
-    k = 2 * m / (n_hyper-1)
+        # TODO Improve estimate
+        estimated_components = 1
+        m = m - (estimated_components - 1)
+
+    k = 2 * m / n
+
     def criterium(h):
         val = networkit.globals.clustering(h)
         return val
-    goal = criterium(g)
+    goal = cc
 
     def guess_goal(t):
         iterations = 10
         results = []
         for _ in range(iterations):
             hyper_t = networkit.generators.HyperbolicGenerator(
-                n_hyper, k, gamma, t).generate()
+                n, k, gamma, t).generate()
             if connected:
                 make_connected(hyper_t)
             hyper_t = shrink_to_giant_component(hyper_t)
@@ -237,17 +239,28 @@ def fit_hyperbolic(g, connected=False):
         return sum(results)/len(results)
     t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
     hyper = networkit.generators.HyperbolicGenerator(
-        n_hyper, k, gamma, t).generate()
+        n, k, gamma, t).generate()
     if connected:
         make_connected(hyper)
     info_map = [
-        ("n", n_hyper),
+        ("n", n),
         ("k", k),
         ("gamma", gamma),
         ("t", t)
     ]
     info = "|".join([name + "=" + str(val) for name, val in info_map])
     return (info, hyper)
+
+def fit_hyperbolic(g, connected=False):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+    alpha = powerlaw_fit(degrees)
+    gamma = max(alpha, 2.1)
+    n, m = g.size()
+    cc = networkit.globals.clustering(g)
+
+    return generate_hyperbolic(n, m, gamma, cc, connected)
 
 
 def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
