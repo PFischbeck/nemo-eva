@@ -5,7 +5,7 @@ import math
 import numpy as np
 import networkit
 import collections
-#import pygirgs
+import pygirgs
 
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
@@ -163,7 +163,7 @@ def generate_chung_lu(degrees, connected):
     networkit.setSeed(seed=42, useThreadId=False)
 
     if connected:
-        tree = random_tree(len(degrees))
+        tree = random_binary_tree(len(degrees))
 
         tree_degs = networkit.centrality.DegreeCentrality(tree).run().scores()
         tree_indices = list(range(len(degrees)))
