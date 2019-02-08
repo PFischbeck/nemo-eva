@@ -24,6 +24,9 @@ def random_tree(n):
     return t
 
 def random_weighted(choices, weights):
+    if len(choices)==1:
+        return choices[0]
+        
     cumdist = list(itertools.accumulate(weights))
     x = random.random() * cumdist[-1]
     return choices[bisect.bisect(cumdist, x)]

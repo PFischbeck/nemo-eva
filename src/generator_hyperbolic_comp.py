@@ -27,7 +27,7 @@ def _execute_one_graph(parameters):
 
     outputs = []
 
-    model_name = "ER"
+    model_name = "hyperbolic"
 
     try:
         info, model = generate_hyperbolic(n, m, gamma, cc, connected=False)
@@ -54,7 +54,7 @@ def _execute_one_graph(parameters):
 
 
 class GeneratorHyperbolicComp(AbstractStage):
-    _stage = "2-features/er-comp"
+    _stage = "2-features/hyperbolic-comp"
 
     def __init__(self, parameters, cores=1, **kwargs):
         super(GeneratorHyperbolicComp, self).__init__()
