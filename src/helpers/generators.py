@@ -10,6 +10,39 @@ import pygirgs
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
 
+
+# "Random ternary tree"
+def random_ternary_tree(n):
+    t = networkit.Graph(n)
+    
+    vertices = list(range(n))
+    random.shuffle(vertices)
+
+    def gen_split(start, end):
+        if end-start==1:
+            return vertices[start]
+        if end-start==0:
+            return None
+        cur_root = vertices[start]
+        sizes = np.random.multinomial(end-start-1, [1/3.]*3)
+        n_first, n_second = sizes[0], sizes[0] + sizes[1]
+        root_left = gen_split(start+1, start+1+n_first)
+        root_middle = gen_split(start+1+n_first, start+1+n_second)
+        root_right = gen_split(start+1+n_second, end)
+        if root_left is not None:
+            t.addEdge(vertices[cur_root], vertices[root_left])
+        if root_middle is not None:
+            t.addEdge(vertices[cur_root], vertices[root_middle])
+        if root_right is not None:
+            t.addEdge(vertices[cur_root], vertices[root_right])
+        
+        return cur_root
+    
+    gen_split(0, n)
+
+    return t
+
+
 # "Random binary tree"
 def random_binary_tree(n):
     t = networkit.Graph(n)
@@ -106,7 +139,7 @@ def generate_er(n, p, connected):
     graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
     if connected:
-        t = random_binary_tree(n)
+        t = random_ternary_tree(n)
         graph.merge(t)
 
     return graph
