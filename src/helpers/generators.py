@@ -11,6 +11,50 @@ from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
 
 
+# taken from https://gist.github.com/SofiaGodovykh/18f60a3b9b3e6812c071456f61f9c5a6
+class UnionFind:
+    """Weighted quick-union with path compression.
+    The original Java implementation is introduced at
+    https://www.cs.princeton.edu/~rs/AlgsDS07/01UnionFind.pdf
+    >>> uf = UnionFind(10)
+    >>> for (p, q) in [(3, 4), (4, 9), (8, 0), (2, 3), (5, 6), (5, 9),
+    ...                (7, 3), (4, 8), (6, 1)]:
+    ...     uf.union(p, q)
+    >>> uf._id
+    [8, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    >>> uf.find(0, 1)
+    True
+    >>> uf._id
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    """
+
+    def __init__(self, n):
+        self._id = list(range(n))
+        self._sz = [1] * n
+
+    def _root(self, i):
+        j = i
+        while (j != self._id[j]):
+            self._id[j] = self._id[self._id[j]]
+            j = self._id[j]
+        return j
+
+    def find(self, p, q):
+        return self._root(p) == self._root(q)
+    
+    def union(self, p, q):
+        i = self._root(p)
+        j = self._root(q)
+        if i == j:
+            return
+        if (self._sz[i] < self._sz[j]):
+            self._id[i] = j
+            self._sz[j] += self._sz[i]
+        else:
+            self._id[j] = i
+            self._sz[i] += self._sz[j]
+
+
 # "Random ternary tree"
 def random_ternary_tree(n):
     t = networkit.Graph(n)
@@ -69,6 +113,28 @@ def random_binary_tree(n):
     gen_split(0, n)
 
     return t
+
+
+# Connect every vertex to a random vertex in a different component
+# Runtime: O(n log n)
+def better_random_tree(n):
+    t = networkit.Graph(n)
+    nodes = t.nodes()
+    vertices = list(range(n))
+    random.shuffle(vertices)
+
+    uf = UnionFind(n)
+
+    # Connect every vertex (except for the last one) to a random vertex from another component
+    for i in range(n-1):
+        candidate = i
+        while uf.find(i, candidate):
+            candidate = random.randrange(n)
+        uf.union(i, candidate)
+        t.addEdge(nodes[vertices[i]], nodes[vertices[candidate]])
+
+    return t
+
 
 # Generate a random tree, return the graph
 # "Uniform random recursive tree"
@@ -139,7 +205,7 @@ def generate_er(n, p, connected):
     graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
     if connected:
-        t = random_ternary_tree(n)
+        t = better_random_tree(n)
         graph.merge(t)
 
     return graph
