@@ -10,6 +10,7 @@ import pygirgs
 from helpers.graph_analysis import shrink_to_giant_component
 from helpers.powerlaw_estimation import powerlaw_fit
 
+# "Random binary tree"
 def random_binary_tree(n):
     t = networkit.Graph(n)
     
@@ -37,6 +38,7 @@ def random_binary_tree(n):
     return t
 
 # Generate a random tree, return the graph
+# "Uniform random recursive tree"
 def random_tree(n):
     t = networkit.Graph(n)
     nodes = t.nodes()
