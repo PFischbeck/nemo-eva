@@ -159,9 +159,22 @@ def random_weighted(choices, weights):
     x = random.random() * cumdist[-1]
     return choices[bisect.bisect(cumdist, x)]
 
+
+# Connect all components to largest component
+# Choose random vertex (uniformly)
+def make_connected_unweighted(g):
+    comp = networkit.components.ConnectedComponents(g)
+    comp.run()
+    components = comp.getComponents()
+    largest_comp = max(components, key=len)
+    for comp1 in components:
+        if comp1 != largest_comp:
+            g.addEdge(random.choice(comp1), random.choice(largest_comp))
+
+
 # Connect all other components to largest component
 # Choose random vertex each time, weighted by degree
-def make_connected(g):
+def make_connected_weighted(g):
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     comp = networkit.components.ConnectedComponents(g)
     comp.run()
@@ -199,15 +212,15 @@ def generate_er(n, p, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
 
-    if connected:
-        p = (p*n - 2)/(n - 2)
+    #if connected:
+    #    p = (p*n - 2)/(n - 2)
 
     graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
     if connected:
-        t = better_random_tree(n)
-        graph.merge(t)
-
+        #t = better_random_tree(n)
+        #graph.merge(t)
+        make_connected_unweighted(graph)
     return graph
 
 
@@ -364,7 +377,7 @@ def generate_hyperbolic(n, m, gamma, cc, connected):
             hyper_t = networkit.generators.HyperbolicGenerator(
                 n, k, gamma, t).generate()
             if connected:
-                make_connected(hyper_t)
+                make_connected_weighted(hyper_t)
             hyper_t = shrink_to_giant_component(hyper_t)
             results.append(criterium(hyper_t))
         return sum(results)/len(results)
@@ -372,7 +385,7 @@ def generate_hyperbolic(n, m, gamma, cc, connected):
     hyper = networkit.generators.HyperbolicGenerator(
         n, k, gamma, t).generate()
     if connected:
-        make_connected(hyper)
+        make_connected_weighted(hyper)
     info_map = [
         ("n", n),
         ("k", k),
@@ -434,7 +447,7 @@ def fit_girg(g, dimension=1, connected=False):
         for _ in range(iterations):
             girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
             if connected:
-                make_connected(girg)
+                make_connected_weighted(girg)
             girg = shrink_to_giant_component(girg)
             results.append(criterium(girg))
         return sum(results)/len(results)
@@ -442,7 +455,7 @@ def fit_girg(g, dimension=1, connected=False):
 
     girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
     if connected:
-        make_connected(girg)
+        make_connected_weighted(girg)
     info_map = [
         ("n", n_est),
         ("k", k),
