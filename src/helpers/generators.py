@@ -159,6 +159,18 @@ def random_weighted(choices, weights):
     x = random.random() * cumdist[-1]
     return choices[bisect.bisect(cumdist, x)]
 
+# Connect all components like a tree
+# For each component, choose vertex uniformly at random
+def make_connected_tree(g):
+    comp = networkit.components.ConnectedComponents(g)
+    comp.run()
+    components = comp.getComponents()
+    
+    t = random_tree(len(components))
+    
+    for u, v in t.edges():
+        g.addEdge(random.choice(components[u]), random.choice(components[v]))
+
 
 # Connect all components to largest component
 # Choose random vertex (uniformly)
@@ -220,7 +232,7 @@ def generate_er(n, p, connected):
     if connected:
         #t = better_random_tree(n)
         #graph.merge(t)
-        make_connected_unweighted(graph)
+        make_connected_tree(graph)
     return graph
 
 
