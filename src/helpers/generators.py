@@ -166,7 +166,7 @@ def make_connected_tree(g):
     comp.run()
     components = comp.getComponents()
     
-    t = random_tree(len(components))
+    t = better_random_tree(len(components))
     
     for u, v in t.edges():
         g.addEdge(random.choice(components[u]), random.choice(components[v]))
@@ -232,7 +232,7 @@ def generate_er(n, p, connected):
     if connected:
         #t = better_random_tree(n)
         #graph.merge(t)
-        make_connected_tree(graph)
+        make_connected_unweighted(graph)
     return graph
 
 
@@ -289,7 +289,7 @@ def generate_chung_lu(degrees, connected):
     networkit.setSeed(seed=42, useThreadId=False)
 
     if connected:
-        tree = random_binary_tree(len(degrees))
+        tree = better_random_tree(len(degrees))
 
         tree_degs = networkit.centrality.DegreeCentrality(tree).run().scores()
         tree_indices = list(range(len(degrees)))
