@@ -136,6 +136,27 @@ def better_random_tree(n):
     return t
 
 
+def random_weighted_tree(weights):
+    n = len(weights)
+    s = sum(weights)
+    probs = [w/s for w in weights]
+
+    t = networkit.Graph(n)
+    nodes = t.nodes()
+
+    uf = UnionFind(n)
+
+    # Connect every vertex (except for the last one) to a random vertex from another component
+    for i in range(n-1):
+        candidate = i
+        while uf.find(i, candidate):
+            candidate = np.random.choice(n, p=probs)
+        uf.union(i, candidate)
+        t.addEdge(nodes[i], nodes[candidate])
+
+    return t
+
+
 # Generate a random tree, return the graph
 # "Uniform random recursive tree"
 def random_tree(n):
@@ -172,16 +193,18 @@ def make_connected_tree(g):
         g.addEdge(random.choice(components[u]), random.choice(components[v]))
 
 
-# Connect all components to largest component
-# Choose random vertex (uniformly)
+# Connect all components like a tree
+# Create the tree weighted by component size
+# Choose random vertex for each component
 def make_connected_unweighted(g):
     comp = networkit.components.ConnectedComponents(g)
     comp.run()
     components = comp.getComponents()
-    largest_comp = max(components, key=len)
-    for comp1 in components:
-        if comp1 != largest_comp:
-            g.addEdge(random.choice(comp1), random.choice(largest_comp))
+    
+    t = random_weighted_tree(list(map(len, components)))
+    
+    for u, v in t.edges():
+        g.addEdge(random.choice(components[u]), random.choice(components[v]))
 
 
 # Connect all other components to largest component
@@ -241,7 +264,7 @@ def generate_er(n, m, connected):
         graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
         comp = networkit.components.ConnectedComponents(graph)
         make_connected_unweighted(graph)
-        #print("{} components, {} out of {} remaining".format(components, m_, m))
+        print("{} components, {} out of {} remaining".format(components, m_, m))
     
     else:
         p = (2*m)/(n*(n-1))
