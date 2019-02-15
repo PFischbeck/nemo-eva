@@ -17,11 +17,11 @@ from helpers.generators import fit_er, generate_er
 
 def _execute_one_graph(parameters):
 
-    n, p = parameters
+    n, m = parameters
 
     graph_type = "parameters"
 
-    name = "ER:n={},p={}".format(n, p)
+    name = "ER:n={},m={}".format(n, m)
 
     print("Graph", name)
 
@@ -30,7 +30,7 @@ def _execute_one_graph(parameters):
     model_name = "ER"
 
     try:
-        info, model = "", generate_er(n, p, connected=False)
+        info, model = "", generate_er(n, m, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
         info2, model2 = "", fit_er(model, connected=True)
@@ -84,8 +84,8 @@ def main():
     parameters = []
     for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000))+list(range(100000, 500000, 100000)):
         for d in [2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]:
-            p = (d * n) / (n * (n-1))
-            parameters.append((n, p))
+            m = (d * n) // 2
+            parameters.append((n, m))
 
     generator = GeneratorERComp(parameters, cores=args.cores)
     generator.execute()

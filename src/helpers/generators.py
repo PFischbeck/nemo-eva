@@ -220,27 +220,40 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
 
-def generate_er(n, p, connected):
+def generate_er(n, m, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
 
-    #if connected:
-    #    p = (p*n - 2)/(n - 2)
-
-    graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
 
     if connected:
-        #t = better_random_tree(n)
-        #graph.merge(t)
+        fit_iterations = 2
+        components = 1
+        for _ in range(fit_iterations):
+            m_ = m - (components - 1)
+            p = (2*m_)/(n*(n-1))
+            graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+            comp = networkit.components.ConnectedComponents(graph)
+            comp.run()
+            components = comp.numberOfComponents()
+            
+        m_ = m - (components - 1)
+        p = (2*m_)/(n*(n-1))
+        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+        comp = networkit.components.ConnectedComponents(graph)
         make_connected_unweighted(graph)
+        #print("{} components, {} out of {} remaining".format(components, m_, m))
+    
+    else:
+        p = (2*m)/(n*(n-1))
+        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+
     return graph
 
 
 def fit_er(g, connected=False):
     n, m = g.size()
-    p = (2*m)/(n*(n-1))
     
-    return generate_er(n, p, connected)
+    return generate_er(n, m, connected)
 
 
 def generate_ba(n, m, fully_connected_start):
