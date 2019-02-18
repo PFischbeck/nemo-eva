@@ -147,7 +147,8 @@ def random_weighted_tree(weights):
     uf = UnionFind(n)
 
     # Connect every vertex (except for the last one) to a random vertex from another component
-    for i in range(n-1):
+    # Sorted descending by weight
+    for i in sorted(range(n), key=lambda i: weights[i], reverse=True)[:-1]:
         candidate = i
         while uf.find(i, candidate):
             candidate = np.random.choice(n, p=probs)
