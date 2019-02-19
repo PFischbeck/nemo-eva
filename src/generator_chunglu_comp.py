@@ -13,7 +13,7 @@ import os
 from abstract_stage import AbstractStage
 from graph_cleaner import GraphCleaner
 from helpers.graph_analysis import analyze, shrink_to_giant_component
-from helpers.generators import generate_chung_lu_constant
+from helpers.generators import generate_chung_lu_constant, fit_chung_lu_constant
 
 def _execute_one_graph(parameters):
     n, min_deg, max_deg, k, gamma = parameters
@@ -32,7 +32,7 @@ def _execute_one_graph(parameters):
         info, model = "", generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
-        info2, model2 = "", generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected=True)
+        info2, model2 = fit_chung_lu_constant(model, connected=True)
         output2 = analyze(model2)
     except Exception as e:
         print("Error:", e, "for", model_name, "of", name)
