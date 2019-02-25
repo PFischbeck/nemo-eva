@@ -263,7 +263,6 @@ def generate_er(n, m, connected):
         m_ = m - (components - 1)
         p = (2*m_)/(n*(n-1))
         graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
-        comp = networkit.components.ConnectedComponents(graph)
         make_connected_unweighted(graph)
         print("{} components, {} out of {} remaining".format(components, m_, m))
     
@@ -407,17 +406,10 @@ def fit_chung_lu_constant(g, connected=False):
         
 
 def generate_hyperbolic(n, m, gamma, cc, connected):
-    if connected:
-        # TODO Improve estimate
-        estimated_components = 1
-        m = m - (estimated_components - 1)
-
-    k = 2 * m / n
-
     def criterium(h):
         val = networkit.globals.clustering(h)
         return val
-    goal = cc
+
 
     def guess_goal(t):
         iterations = 10
@@ -430,11 +422,33 @@ def generate_hyperbolic(n, m, gamma, cc, connected):
             hyper_t = shrink_to_giant_component(hyper_t)
             results.append(criterium(hyper_t))
         return sum(results)/len(results)
-    t, crit_diff = binary_search(guess_goal, goal, 0.01, 0.99)
-    hyper = networkit.generators.HyperbolicGenerator(
-        n, k, gamma, t).generate()
+    
+
     if connected:
+        fit_iterations = 2
+        components = 1
+        for _ in range(fit_iterations):
+            m_ = m - (components - 1)
+            k = 2 * m_ / n
+            t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+            hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
+            comp = networkit.components.ConnectedComponents(hyper)
+            comp.run()
+            components = comp.numberOfComponents()
+            
+        m_ = m - (components - 1)
+        k = 2 * m_ / n
+        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
+        make_connected_unweighted(hyper)
+        print("{} components, {} out of {} remaining".format(components, m_, m))
+
         make_connected_weighted(hyper)
+    else:
+        k = 2 * m / n
+        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
+    
     info_map = [
         ("n", n),
         ("k", k),
