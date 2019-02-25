@@ -440,9 +440,7 @@ def generate_hyperbolic(n, m, gamma, cc, connected):
         k = 2 * m_ / n
         t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
         hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
-        make_connected_unweighted(hyper)
         print("{} components, {} out of {} remaining".format(components, m_, m))
-
         make_connected_weighted(hyper)
     else:
         k = 2 * m / n
