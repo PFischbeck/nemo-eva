@@ -5,13 +5,6 @@ from scipy.sparse.csgraph import connected_components
 
 
 def inflate_feature_set(feature_set_aliases):
-    if "Diameter" in feature_set_aliases:
-        feature_set_aliases.remove("Diameter")
-        a = inflate_feature_set(feature_set_aliases + ["Effective Diameter"])
-        b = inflate_feature_set(feature_set_aliases + ["Diameter Max"])
-        a.update(b)
-        return a
-
     def standardize(l):
         return tuple(sorted(l))
     inflated = {}
@@ -91,8 +84,6 @@ feature_order = [
     "Edges",
     "Density",
     "Effective Diameter",
-    "Diameter Max",
-    "Diameter Min",
     "Partition.Communities.Properties.Size",
     "Degree Distribution.Powerlaw.Alpha",
     "Degree Distribution.Powerlaw.KS Distance"
@@ -160,15 +151,15 @@ def get_all_feature_sets(df, graphs):
         ["Nodes", "Edges", "ClusteringCoefficient", "Degree Distribution.Powerlaw.Alpha"],
         ["Nodes", "Edges", "Degree"],
         ["Nodes", "Edges", "Degree", "ClusteringCoefficient"],
-        ["Nodes", "Edges", "Diameter"],
-        ["Nodes", "Edges", "ClusteringCoefficient", "Diameter"],
-        ["Nodes", "Edges", "ClusteringCoefficient", "Diameter", "Degree Distribution.Powerlaw.Alpha"],
-        ["ClusteringCoefficient", "Diameter", "Degree Distribution.Powerlaw.Alpha"],
+        ["Nodes", "Edges", "Effective Diameter"],
+        ["Nodes", "Edges", "ClusteringCoefficient", "Effective Diameter"],
+        ["Nodes", "Edges", "ClusteringCoefficient", "Effective Diameter", "Degree Distribution.Powerlaw.Alpha"],
+        ["ClusteringCoefficient", "Effective Diameter", "Degree Distribution.Powerlaw.Alpha"],
         ["Nodes", "Edges", "Betweenness"],
         ["Nodes", "Edges", "Degree", "Betweenness"],
         ["Nodes", "Edges", "ClusteringCoefficient", "Betweenness"],
-        ["Nodes", "Edges", "Betweenness", "Closeness", "Diameter"],
-        ["Betweenness", "Closeness", "Diameter"],
+        ["Nodes", "Edges", "Betweenness", "Closeness", "Effective Diameter"],
+        ["Betweenness", "Closeness", "Effective Diameter"],
         ["Nodes", "Edges", "Closeness"],
         ["Nodes", "Edges", "Centrality.CoreDecomposition"],
         ["Nodes", "Edges", "Katz"],
@@ -192,7 +183,7 @@ def get_all_feature_sets(df, graphs):
         ["ClusteringCoefficient"],
         ["Degree Distribution.Powerlaw.Alpha"],
         ["Degree"],
-        ["Diameter"],
+        ["Effective Diameter"],
         ["Betweenness"],
         ["Closeness"],
         ["Katz"],
