@@ -16,11 +16,11 @@ from helpers.graph_analysis import analyze, shrink_to_giant_component
 from helpers.generators import generate_chung_lu_constant, fit_chung_lu_constant
 
 def _execute_one_graph(parameters):
-    n, min_deg, max_deg, k, gamma = parameters
+    n, max_deg, k, gamma = parameters
 
     graph_type = "parameters"
 
-    name = "CL:n={},min_deg={};max_deg={};k={};gamma={}".format(n, min_deg, max_deg, k, gamma)
+    name = "CL:n={},max_deg={};k={};gamma={}".format(n, max_deg, k, gamma)
 
     print("Graph", name)
 
@@ -29,7 +29,7 @@ def _execute_one_graph(parameters):
     model_name = "chung-lu"
 
     try:
-        info, model = "", generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected=False)
+        info, model = "", generate_chung_lu_constant(n, max_deg, k, gamma, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
         info2, model2 = fit_chung_lu_constant(model, connected=True)
@@ -81,12 +81,11 @@ def main():
     args = parser.parse_args()
 
     parameters = []
-    min_deg = 1
     for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000))+list(range(100000, 500000, 100000)):
         for k in [2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]:
-            max_deg = int(k * 10)
+            max_deg = min(n-1, int(k * 100))
             for gamma in [2.1, 2.3, 2.5, 2.7, 2.9, 3.1]:
-                parameters.append((n, min_deg, max_deg, k, gamma))
+                parameters.append((n, max_deg, k, gamma))
 
     generator = GeneratorChungLuComp(parameters, cores=args.cores)
     generator.execute()

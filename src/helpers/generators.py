@@ -8,7 +8,7 @@ import collections
 import pygirgs
 
 from helpers.graph_analysis import shrink_to_giant_component
-from helpers.powerlaw_estimation import powerlaw_fit
+from helpers.powerlaw_estimation import powerlaw_fit, powerlaw_generate
 
 
 # taken from https://gist.github.com/SofiaGodovykh/18f60a3b9b3e6812c071456f61f9c5a6
@@ -324,56 +324,33 @@ def generate_chung_lu(degrees, connected):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
 
+    degrees.sort(reverse=True)
+
     if connected:
-        tree = better_random_tree(len(degrees))
-
-        tree_degs = networkit.centrality.DegreeCentrality(tree).run().scores()
-        tree_indices = list(range(len(degrees)))
-        tree_indices.sort(key=lambda i: tree_degs[i])
-
-
-        degrees.sort()
-        new_degrees = [0] * len(degrees)
-
-        diff = 0
-        for tree_index, degree in zip(tree_indices, degrees):
-            tree_deg = tree_degs[tree_index]
-
-            # if degree >= tree_deg --> we can set degree accordingly and keep some of the diff
-            if degree - tree_deg >= 0:
-                new_degrees[tree_index] = max(0, degree - tree_deg - diff)
-                diff -= min(degree - tree_deg, diff)
-            else:
-                new_degrees[tree_index] = 0
-                diff += tree_deg - degree
-
-        # new_degrees: degrees for chung-Lu generation, in the same order as in the tree
-        cl_to_tree = list(range(len(degrees)))
-        cl_to_tree.sort(key=lambda i: new_degrees[i], reverse=True)
-        # cl_to_tree: indices of the nodes in tree, sorted decreasing by degree for chung-lu generation
-        tree_to_cl = [0] * len(degrees)
-        for cl_index, tree_index in enumerate(cl_to_tree):
-            tree_to_cl[tree_index] = cl_index
+        fit_iterations = 2
+        components = 1
+        for _ in range(fit_iterations):
+            # (Fairly) reduce degrees of high-degree vertices
+            new_degrees = degrees.copy()
+            for i in range(components):
+                new_degrees[i] -= 1
+            graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
+            comp = networkit.components.ConnectedComponents(graph)
+            comp.run()
+            components = comp.numberOfComponents()
+            
+        new_degrees = degrees.copy()
+        for i in range(components):
+            new_degrees[i] -= 1
         graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
-        for u, v in tree.edges():
-            if not graph.hasEdge(tree_to_cl[u], tree_to_cl[v]):
-                graph.addEdge(tree_to_cl[u], tree_to_cl[v])
+        make_connected_weighted(graph)
         return graph
-
-
     else:
         return networkit.generators.ChungLuGenerator(degrees).generate()
 
 
-def generate_chung_lu_constant(n, min_deg, max_deg, k, gamma, connected):
-    generator = networkit.generators.PowerlawDegreeSequence(min_deg, max_deg, -gamma)
-    
-    generator.setGamma(-gamma)
-    generator.run()
-    generator.setMinimumFromAverageDegree(max(generator.getExpectedAverageDegree(), k))
-    
-    degree_sequence = generator.run().getDegreeSequence(n)
-    
+def generate_chung_lu_constant(n, max_deg, k, gamma, connected):
+    degree_sequence = powerlaw_generate(n, max_deg, k, gamma)
     graph = generate_chung_lu(degree_sequence, connected)
 
     return graph
@@ -392,7 +369,7 @@ def fit_chung_lu_constant(g, connected=False):
     
     k = 2 * g.numberOfEdges() / g.numberOfNodes()
        
-    graph = generate_chung_lu_constant(g.numberOfNodes(), min(degrees), max(degrees), k, gamma, connected)
+    graph = generate_chung_lu_constant(g.numberOfNodes(), max(degrees), k, gamma, connected)
     
     info_map = [
         ("n", g.numberOfNodes()),
