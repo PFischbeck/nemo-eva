@@ -208,19 +208,18 @@ def make_connected_unweighted(g):
         g.addEdge(random.choice(components[u]), random.choice(components[v]))
 
 
-# Connect all other components to largest component
+# Connect all components like a tree
+# Create the tree weighted by degree sum
 # Choose random vertex each time, weighted by degree
 def make_connected_weighted(g):
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     comp = networkit.components.ConnectedComponents(g)
     comp.run()
     components = comp.getComponents()
-    largest_comp = max(components, key=len)
-    largest_comp_degs = [degrees[i] for i in largest_comp]
-    for comp1 in components:
-        if comp1 != largest_comp:
-            comp_degs = [degrees[i] for i in comp1]
-            g.addEdge(random_weighted(comp1, comp_degs), random_weighted(largest_comp, largest_comp_degs))
+    degs_by_comp = [[degrees[i] for i in cur_comp] for cur_comp in components]
+    t = random_weighted_tree([sum(degs)+len(degs) for degs in degs_by_comp])
+    for u, v in t.edges():
+        g.addEdge(random_weighted(components[u], degs_by_comp[u]), random_weighted(components[v], degs_by_comp[v]))
             
 
 def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
