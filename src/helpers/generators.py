@@ -444,7 +444,11 @@ def fit_hyperbolic(g, connected=False):
     return generate_hyperbolic(n, m, gamma, cc, connected)
 
 
-def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
+def calc_girg(dimension, n, k, alpha, ple):
+    wseed = 42
+    pseed = 1234
+    sseed = 12345
+
     generator = pygirgs.Generator()
     generator.set_weights(n, -ple, wseed)
     generator.set_positions(n, dimension, pseed)
@@ -460,43 +464,50 @@ def generate_girg(n, dimension, k, alpha, ple, wseed, pseed, sseed):
     return girg
 
 
-def fit_girg(g, dimension=1, connected=False):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
-    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
-    alpha = powerlaw_fit(degrees)
-    gamma = max(alpha, 2.1)
-    n, m = g.size()
-    n_est = n
-    k = 2 * m / n_est
+def generate_girg(dimension, n, m, cc, ple, connected):
+
     def criterium(h):
         val = networkit.globals.clustering(h)
         return val
-    goal = criterium(g)
-
-    wseed = 42
-    pseed = 1234
-    sseed = 12345
 
     def guess_goal(t):
         iterations = 10
         results = []
         for _ in range(iterations):
-            girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
+            girg = calc_girg(dimension, n, k, t, ple)
             if connected:
                 make_connected_weighted(girg)
             girg = shrink_to_giant_component(girg)
             results.append(criterium(girg))
         return sum(results)/len(results)
-    t, crit_diff = binary_search(guess_goal, goal, 1.01, 9.0)
 
-    girg = generate_girg(n_est, dimension, k, t, gamma, wseed, pseed, sseed)
     if connected:
+        fit_iterations = 2
+        components = 1
+        for _ in range(fit_iterations):
+            m_ = m - (components - 1)
+            k = 2 * m_ / n
+            t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+            girg = calc_girg(dimension, n, k, t, ple)
+            comp = networkit.components.ConnectedComponents(girg)
+            comp.run()
+            components = comp.numberOfComponents()
+            
+        m_ = m - (components - 1)
+        k = 2 * m_ / n
+        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        girg = calc_girg(dimension, n, k, t, ple)
+        print("{} components, {} out of {} remaining".format(components, m_, m))
         make_connected_weighted(girg)
+    else:
+        k = 2 * m / n
+        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        girg = calc_girg(dimension, n, k, t, ple)
+    
     info_map = [
-        ("n", n_est),
+        ("n", n),
         ("k", k),
-        ("gamma", gamma),
+        ("gamma", ple),
         ("t", t),
         ("dimension", dimension)
     ]
@@ -504,3 +515,16 @@ def fit_girg(g, dimension=1, connected=False):
     return (info, girg)
 
 
+def fit_girg(g, dimension=1, connected=False):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+
+    n, m = g.size()
+    cc = networkit.globals.clustering(g)
+
+    alpha = powerlaw_fit(degrees)
+    ple = max(alpha, 2.1)
+
+    return generate_girg(dimension, n, m, cc, ple, connected)

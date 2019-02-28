@@ -4,6 +4,7 @@ import csv
 from generator_er_comp import GeneratorERComp
 from generator_chunglu_comp import GeneratorChungLuComp
 from generator_hyperbolic_comp import GeneratorHyperbolicComp
+from generator_girg_comp import GeneratorGirgComp
 from generator_real_world import GeneratorRealWorld
 from generator_er import GeneratorER
 from generator_ba_circle import GeneratorBACircle
@@ -14,6 +15,19 @@ from generator_hyperbolic import GeneratorHyperbolic
 from generator_girg import GeneratorGIRG
 from feature_cleaner import FeatureCleaner
 from classifier import Classifier
+
+def run_girg_comp(cores):
+    with open(GeneratorGirgComp.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="girg", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("girg", "girg-connected")]
+    name = "girg-comp"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
 
 
 def run_hyperbolic_comp(cores):
@@ -124,7 +138,8 @@ def main():
         "er_comp": run_er_comp,
         "chunglu_comp": run_chunglu_comp,
         "hyper_vs_girg": run_hyper_vs_girg,
-        "hyperbolic_comp": run_hyperbolic_comp
+        "hyperbolic_comp": run_hyperbolic_comp,
+        "girg_comp": run_girg_comp
     }
 
     parser = argparse.ArgumentParser()
