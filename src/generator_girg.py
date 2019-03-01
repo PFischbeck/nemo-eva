@@ -43,22 +43,19 @@ def _execute_one_graph(graph_dict):
 
     outputs = []
 
-    dimension=1
-    model_name = "girg-{}d".format(dimension)
-    model_converter = lambda g: fit_girg(g, dimension=dimension, connected=True)
+    for dimension in [1, 2, 3]:
+        model_name = "girg-{}d".format(dimension)
+        try:
+            info, model = fit_girg(g, dimension=dimension, connected=True)
+            output = analyze(model)
 
-    try:
-        info, model = model_converter(g)
-        output = analyze(model)
-    except Exception as e:
-        print("Error:", e, "for", model_name, "of", g.getName(), model)
-    else:
-        output["Graph"] = g.getName()
-        output["Type"] = graph_type
-        output["Model"] = model_name
-        output["Info"] = info
-        outputs.append(output)
-
+            output["Graph"] = g.getName()
+            output["Type"] = graph_type
+            output["Model"] = model_name
+            output["Info"] = info
+            outputs.append(output)
+        except Exception as e:
+            print("Error:", e, "for", model_name, "of", g.getName())
 
     return outputs
 
