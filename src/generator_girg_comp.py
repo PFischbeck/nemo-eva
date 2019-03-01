@@ -30,7 +30,7 @@ def _execute_one_graph(parameters):
     model_name = "girg"
 
     try:
-        info, model = generate_girg(dimension, n, m, gamma, cc, connected=False)
+        info, model = generate_girg(dimension, n, m, cc, gamma, connected=False)
         output = analyze(model)
         model = shrink_to_giant_component(model)
         info2, model2 = fit_girg(model, connected=True)
