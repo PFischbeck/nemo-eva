@@ -487,7 +487,7 @@ def generate_girg(dimension, n, m, cc, ple, connected):
         for _ in range(fit_iterations):
             m_ = m - (components - 1)
             k = 2 * m_ / n
-            t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+            t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
             girg = calc_girg(dimension, n, k, t, ple)
             comp = networkit.components.ConnectedComponents(girg)
             comp.run()
@@ -495,13 +495,13 @@ def generate_girg(dimension, n, m, cc, ple, connected):
             
         m_ = m - (components - 1)
         k = 2 * m_ / n
-        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
         girg = calc_girg(dimension, n, k, t, ple)
         print("{} components, {} out of {} remaining".format(components, m_, m))
         make_connected_weighted(girg)
     else:
         k = 2 * m / n
-        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
+        t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
         girg = calc_girg(dimension, n, k, t, ple)
     
     info_map = [
