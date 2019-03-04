@@ -126,7 +126,9 @@ def run_compare_all(cores):
         ("chung-lu", "real-world"),
         ("chung-lu constant", "real-world"),
         ("hyperbolic", "real-world"),
-        ("girg-1d", "real-world")
+        ("girg-1d", "real-world"),
+        ("girg-2d", "real-world"),
+        ("girg-3d", "real-world")
     ]
     name = "compare_all"
     classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
