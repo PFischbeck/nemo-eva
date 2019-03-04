@@ -1,6 +1,11 @@
 import argparse
 import csv
 
+from generator_er_self import GeneratorERSelf
+from generator_chunglu_self import GeneratorChungLuSelf
+from generator_hyperbolic_self import GeneratorHyperbolicSelf
+from generator_girg_self import GeneratorGirgSelf
+
 from generator_er_comp import GeneratorERComp
 from generator_chunglu_comp import GeneratorChungLuComp
 from generator_hyperbolic_comp import GeneratorHyperbolicComp
@@ -78,6 +83,62 @@ def run_hyper_vs_girg(cores):
     classifier.execute()
 
 
+def run_er_self(cores):
+    with open(GeneratorERSelf.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="ER-first", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("ER-first", "ER-second")]
+    name = "ER-self"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
+
+
+def run_chunglu_self(cores):
+    with open(GeneratorChungLuSelf.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="chung-lu-first", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("chung-lu-first", "chung-lu-second")]
+    name = "chung-lu-self"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
+
+
+def run_hyperbolic_self(cores):
+    with open(GeneratorHyperbolicSelf.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="hyperbolic-first", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("hyperbolic-first", "hyperbolic-second")]
+    name = "hyperbolic-self"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
+
+
+def run_girg_self(cores):
+    with open(GeneratorGirgSelf.resultspath) as f:
+        features = list(csv.DictReader(f))
+    feature_cleaner = FeatureCleaner(features, base_model="girg-1d-first", cores=cores)
+    feature_cleaner.execute()
+    with open(FeatureCleaner.resultspath) as input_dicts_file:
+        result = list(csv.DictReader(input_dicts_file))
+        
+    to_compare = [("girg-1d-first", "girg-1d-second")]
+    name = "girg-1d-self"
+    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier.execute()
+
+
 def run_er_comp(cores):
     with open(GeneratorERComp.resultspath) as f:
         features = list(csv.DictReader(f))
@@ -145,7 +206,11 @@ def main():
         "chunglu_comp": run_chunglu_comp,
         "hyper_vs_girg": run_hyper_vs_girg,
         "hyperbolic_comp": run_hyperbolic_comp,
-        "girg_comp": run_girg_comp
+        "girg_comp": run_girg_comp,
+        "er_self": run_er_self,
+        "chunglu_self": run_chunglu_self,
+        "hyperbolic_self": run_hyperbolic_self,
+        "girg_self": run_girg_self
     }
 
     parser = argparse.ArgumentParser()
