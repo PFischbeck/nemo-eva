@@ -68,7 +68,11 @@ def run_hyper_vs_girg(cores):
     with open(FeatureCleaner.resultspath) as input_dicts_file:
         result = list(csv.DictReader(input_dicts_file))
         
-    to_compare = [("hyperbolic", "girg-1d")]
+    to_compare = [
+        ("girg-1d", "hyperbolic"),
+        ("girg-2d", "hyperbolic"),
+        ("girg-3d", "hyperbolic")
+    ]
     name = "hyper-vs-girg"
     classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
     classifier.execute()
