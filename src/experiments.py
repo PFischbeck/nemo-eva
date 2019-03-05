@@ -128,13 +128,13 @@ def run_hyperbolic_self(cores):
 def run_girg_self(cores):
     with open(GeneratorGirgSelf.resultspath) as f:
         features = list(csv.DictReader(f))
-    feature_cleaner = FeatureCleaner(features, base_model="girg-1d-first", cores=cores)
+    feature_cleaner = FeatureCleaner(features, base_model="girg-first", cores=cores)
     feature_cleaner.execute()
     with open(FeatureCleaner.resultspath) as input_dicts_file:
         result = list(csv.DictReader(input_dicts_file))
         
-    to_compare = [("girg-1d-first", "girg-1d-second")]
-    name = "girg-1d-self"
+    to_compare = [("girg-first", "girg-second")]
+    name = "girg-self"
     classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
     classifier.execute()
 
