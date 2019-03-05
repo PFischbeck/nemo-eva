@@ -2,6 +2,7 @@ import numpy as np
 import powerlaw
 import helpers.tail_estimation as pl
 import networkit
+import sys
 
 #def powerlaw_fit(degrees):
 #    fit = powerlaw.Fit(degrees, fit_method='Likelihood', verbose=False)
@@ -27,7 +28,9 @@ def powerlaw_generate(n, max_deg, k, gamma):
     generator.setGamma(-gamma)
     generator.run()
     generator.setMinimumFromAverageDegree(max(generator.getExpectedAverageDegree(), k))
-    
-    degree_sequence = generator.run().getDegreeSequence(n)
+    generator.run()
+    print("powerlaw: wanted k={}, but will get {}".format(k, generator.getExpectedAverageDegree()), file=sys.stderr)
+
+    degree_sequence = generator.getDegreeSequence(n)
     
     return degree_sequence
