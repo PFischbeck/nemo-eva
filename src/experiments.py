@@ -168,8 +168,8 @@ def run_compare_all(cores):
     with open(GeneratorBAFull.resultspath) as f:
         features.extend(list(csv.DictReader(f)))
 
-    with open(GeneratorGIRGDist.resultspath) as f:
-        features.extend(list(csv.DictReader(f)))
+    #with open(GeneratorGIRGDist.resultspath) as f:
+    #    features.extend(list(csv.DictReader(f)))
 
     with open(GeneratorChungLu.resultspath) as f:
         features.extend(list(csv.DictReader(f)))
@@ -192,7 +192,7 @@ def run_compare_all(cores):
         ("ER", "real-world"),
         ("BA full", "real-world"),
         ("BA circle", "real-world"),
-        ("girg-1d-dist", "real-world"),
+        #("girg-1d-dist", "real-world"),
         ("chung-lu", "real-world"),
         ("chung-lu constant", "real-world"),
         ("hyperbolic", "real-world"),
@@ -201,7 +201,7 @@ def run_compare_all(cores):
         ("girg-3d", "real-world")
     ]
     name = "compare_all"
-    classifier = Classifier(result, to_compare=to_compare, classification_name=name, cores=cores)
+    classifier = Classifier(result, with_filters=True, to_compare=to_compare, classification_name=name, cores=cores)
     classifier.execute()
 
 def main():

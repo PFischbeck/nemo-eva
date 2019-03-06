@@ -61,32 +61,51 @@ def classification_experiment(df, to_compare, features_collection, cores):
 class Classifier(AbstractStage):
     _stage = "4-classification_results"
 
-    def __init__(self, features, to_compare, classification_name, cores=1, **kwargs):
+    def __init__(self, features, to_compare, classification_name, with_filters=False, cores=1, **kwargs):
         super(Classifier, self).__init__()
         self.features = features
         self.cores = cores
         self.to_compare = to_compare
+        self.with_filters = with_filters
         self.classification_name = classification_name
 
     def _execute(self):
         df = dicts_to_df(self.features)
         format_feature_df(df)
 
+        base_name = self.to_compare[0][1]
+        df_real = df[df["Model"] == base_name]
+
+        if self.with_filters:
+            small_avg_degree = df_real["Centrality.Degree.Location.Arithmetic Mean"] <= 30
+
+            filters = {
+                "all": [True] * len(df_real),
+                "avg-degree-le-30": small_avg_degree,
+                "avg-degree-gt-30": ~small_avg_degree,
+                "socfb":     df_real["Type"] == "socfb",
+                "not-socfb": df_real["Type"] != "socfb"
+            }
+        else:
+            filters = {
+                "all": [True] * len(df_real)
+            }
+
         print(collections.Counter(df["Model"]))
 
-        # TODO Option to filter for some graphs
-        graphs = sorted(set(df["Graph"]))
+        for filtername, filterdf in sorted(filters.items()):
+            graphs = sorted(df_real[filterdf]["Graph"])
 
-        features_collection = get_all_feature_sets(df, graphs)
-        sub_df = df.loc(axis=0)[:, graphs, :]
-        accuracies = \
-            classification_experiment(
-                sub_df,
-                self.to_compare,
-                features_collection,
-                self.cores)
-        accuracies.to_csv(
-            self._stagepath + "accuracies/" + self.classification_name + ".csv",
-            header=True,
-            index_label="features"
-        )
+            features_collection = get_all_feature_sets(df, graphs)
+            sub_df = df.loc(axis=0)[:, graphs, :]
+            accuracies = \
+                classification_experiment(
+                    sub_df,
+                    self.to_compare,
+                    features_collection,
+                    self.cores)
+            accuracies.to_csv(
+                self._stagepath + "accuracies/" + self.classification_name + "-" + filtername + ".csv",
+                header=True,
+                index_label="features"
+            )
