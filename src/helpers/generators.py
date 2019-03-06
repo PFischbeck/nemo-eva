@@ -464,6 +464,26 @@ def calc_girg(dimension, n, k, alpha, ple):
     return girg
 
 
+def calc_girg_dist(dimension, degrees, k, alpha, ple):
+    pseed = 1234
+    sseed = 12345
+    n = len(degrees)
+
+    generator = pygirgs.Generator()
+    generator.set_weights(degrees)
+    generator.set_positions(n, dimension, pseed)
+    generator.scale_weights(k, dimension, alpha)
+    generator.generate(alpha, sseed)
+
+    girg = networkit.Graph(n)
+    nodes = girg.nodes()
+
+    for u, v in generator.edge_list():
+        girg.addEdge(nodes[u], nodes[v])
+    
+    return girg
+
+
 def generate_girg(dimension, n, m, cc, ple, connected):
 
     def criterium(h):
@@ -515,6 +535,59 @@ def generate_girg(dimension, n, m, cc, ple, connected):
     return (info, girg)
 
 
+def generate_girg_dist(dimension, degrees, cc, ple, connected):
+    n = len(degrees)
+    m = sum(degrees) // 2
+
+    def criterium(h):
+        val = networkit.globals.clustering(h)
+        return val
+
+    def guess_goal(t):
+        iterations = 10
+        results = []
+        for _ in range(iterations):
+            girg = calc_girg_dist(dimension, degrees, k, t, ple)
+            if connected:
+                make_connected_weighted(girg)
+            girg = shrink_to_giant_component(girg)
+            results.append(criterium(girg))
+        return sum(results)/len(results)
+
+    if connected:
+        fit_iterations = 2
+        components = 1
+        for _ in range(fit_iterations):
+            m_ = m - (components - 1)
+            k = 2 * m_ / n
+            t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
+            girg = calc_girg_dist(dimension, degrees, k, t, ple)
+            comp = networkit.components.ConnectedComponents(girg)
+            comp.run()
+            components = comp.numberOfComponents()
+            
+        m_ = m - (components - 1)
+        k = 2 * m_ / n
+        t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
+        girg = calc_girg_dist(dimension, degrees, k, t, ple)
+        print("{} components, {} out of {} remaining".format(components, m_, m))
+        make_connected_weighted(girg)
+    else:
+        k = 2 * m / n
+        t, crit_diff = binary_search(guess_goal, cc, 1.01, 9.0)
+        girg = calc_girg(dimension, degrees, k, t, ple)
+    
+    info_map = [
+        ("n", n),
+        ("k", k),
+        ("gamma", ple),
+        ("t", t),
+        ("dimension", dimension)
+    ]
+    info = "|".join([name + "=" + str(val) for name, val in info_map])
+    return (info, girg)
+
+
 def fit_girg(g, dimension=1, connected=False):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
@@ -528,3 +601,17 @@ def fit_girg(g, dimension=1, connected=False):
     ple = max(alpha, 2.1)
 
     return generate_girg(dimension, n, m, cc, ple, connected)
+
+
+def fit_girg_dist(g, dimension=1, connected=False):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
+    degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+
+    cc = networkit.globals.clustering(g)
+
+    alpha = powerlaw_fit(degrees)
+    ple = max(alpha, 2.1)
+
+    return generate_girg_dist(dimension, degrees, cc, ple, connected)

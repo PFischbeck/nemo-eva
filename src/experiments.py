@@ -18,6 +18,7 @@ from generator_chunglu import GeneratorChungLu
 from generator_chunglu_constant import GeneratorChungLuConstant
 from generator_hyperbolic import GeneratorHyperbolic
 from generator_girg import GeneratorGIRG
+from generator_girg_dist import GeneratorGIRGDist
 from feature_cleaner import FeatureCleaner
 from classifier import Classifier
 
@@ -167,6 +168,9 @@ def run_compare_all(cores):
     with open(GeneratorBAFull.resultspath) as f:
         features.extend(list(csv.DictReader(f)))
 
+    with open(GeneratorGIRGDist.resultspath) as f:
+        features.extend(list(csv.DictReader(f)))
+
     with open(GeneratorChungLu.resultspath) as f:
         features.extend(list(csv.DictReader(f)))
 
@@ -188,6 +192,7 @@ def run_compare_all(cores):
         ("ER", "real-world"),
         ("BA full", "real-world"),
         ("BA circle", "real-world"),
+        ("girg-1d-dist", "real-world"),
         ("chung-lu", "real-world"),
         ("chung-lu constant", "real-world"),
         ("hyperbolic", "real-world"),
