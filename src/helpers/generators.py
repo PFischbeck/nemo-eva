@@ -453,9 +453,9 @@ def fit_hyperbolic(g, connected=False):
 
 
 def calc_girg(dimension, n, k, alpha, ple):
-    wseed = 42
-    pseed = 1234
-    sseed = 12345
+    wseed = random.randrange(10000)
+    pseed = random.randrange(10000)
+    sseed = random.randrange(10000)
 
     generator = pygirgs.Generator()
     generator.set_weights(n, -ple, wseed)
@@ -473,8 +473,8 @@ def calc_girg(dimension, n, k, alpha, ple):
 
 
 def calc_girg_dist(dimension, degrees, k, alpha, ple):
-    pseed = 1234
-    sseed = 12345
+    pseed = random.randrange(10000)
+    sseed = random.randrange(10000)
     n = len(degrees)
 
     generator = pygirgs.Generator()
