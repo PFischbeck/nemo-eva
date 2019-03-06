@@ -331,16 +331,24 @@ def generate_chung_lu(degrees, connected):
         for _ in range(fit_iterations):
             # (Fairly) reduce degrees of high-degree vertices
             new_degrees = degrees.copy()
-            for i in range((components-1)*2):
-                new_degrees[i%len(new_degrees)] -= 1
+            diff = (components-1)*2
+            while diff:
+                pos = random.randrange(len(new_degrees))
+                if new_degrees[pos] > 0: 
+                    new_degrees[pos] -= 1
+                    diff -= 1
             graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
             comp = networkit.components.ConnectedComponents(graph)
             comp.run()
             components = comp.numberOfComponents()
             
         new_degrees = degrees.copy()
-        for i in range((components-1)*2):
-            new_degrees[i%len(new_degrees)] -= 1
+        diff = (components-1)*2
+        while diff:
+            pos = random.randrange(len(new_degrees))
+            if new_degrees[pos] > 0: 
+                new_degrees[pos] -= 1
+                diff -= 1
         graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
         make_connected_weighted(graph)
         return graph
