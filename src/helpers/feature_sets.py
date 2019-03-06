@@ -63,7 +63,7 @@ def generate_inflated_feature_sets(df, aliases):
                 else:
                     filtered_group.append(f)
             if filtered_group:
-                filtered[key] = group
+                filtered[key] = filtered_group
         if filtered:
             feature_sets.update(filtered)
     return feature_sets
