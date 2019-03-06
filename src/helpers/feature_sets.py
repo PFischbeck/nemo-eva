@@ -51,18 +51,21 @@ def inflate_feature_set(feature_set_aliases):
 
 
 def generate_inflated_feature_sets(df, aliases):
-    
     feature_sets = {}
     for a in aliases:
         inflated = inflate_feature_set(a)
-        all_features_present = True
-        for group in inflated.values():
+        filtered = dict()
+        for key, group in inflated.items():
+            filtered_group = []
             for f in group:
                 if f not in df.columns:
-                    all_features_present = False
                     print("Warning: missing feature {}".format(f))
-        if all_features_present:
-            feature_sets.update(inflated)
+                else:
+                    filtered_group.append(f)
+            if filtered_group:
+                filtered[key] = group
+        if filtered:
+            feature_sets.update(filtered)
     return feature_sets
 
 
