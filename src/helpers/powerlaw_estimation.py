@@ -19,6 +19,7 @@ def powerlaw_fit(degrees):
         alpha = 1 + 1 / result[3]
     except:
         alpha = 2.1
+    alpha = max(alpha, 2.1)
     return alpha
 
 
@@ -48,7 +49,7 @@ def powerlaw_generate(n, max_deg, k, gamma):
         if degrees[pos] + modifier >= 0:
             degrees[pos] += modifier
             diff -= 1
-
+    print("powerlaw: min {}, max {}".format(generator.getMinimumDegree(), generator.getMaximumDegree()))
     print("powerlaw: wanted k={}, will get {}".format(k, sum(degrees) / n, file=sys.stderr))
 
     return degrees

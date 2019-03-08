@@ -13,7 +13,7 @@ import os
 from abstract_stage import AbstractStage
 from graph_cleaner import GraphCleaner
 from helpers.graph_analysis import analyze, shrink_to_giant_component
-from helpers.generators import fit_hyperbolic, generate_hyperbolic
+from helpers.generators import fit_hyperbolic, generate_hyperbolic_gd
 
 def _execute_one_graph(parameters):
 
@@ -30,10 +30,10 @@ def _execute_one_graph(parameters):
     model_name = "hyperbolic"
 
     try:
-        info, model = generate_hyperbolic(n, m, gamma, cc, connected=True)
+        info, model = generate_hyperbolic_gd(n, m, gamma, cc)
         output = analyze(model)
         model = shrink_to_giant_component(model)
-        info2, model2 = fit_hyperbolic(model, connected=True)
+        info2, model2 = fit_hyperbolic(model)
         output2 = analyze(model2)
     except Exception as e:
         print("Error:", e, "for", model_name, "of", name)

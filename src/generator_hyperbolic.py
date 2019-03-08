@@ -44,7 +44,7 @@ def _execute_one_graph(graph_dict):
     outputs = []
 
     model_name = "hyperbolic"
-    model_converter = lambda g: fit_hyperbolic(g, connected=True)
+    model_converter = lambda g: fit_hyperbolic(g)
 
     try:
         info, model = model_converter(g)
