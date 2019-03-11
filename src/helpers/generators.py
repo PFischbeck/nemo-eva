@@ -5,7 +5,6 @@ import math
 import numpy as np
 import networkit
 import sys
-import statistics
 import collections
 import pygirgs
 
@@ -245,53 +244,57 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
 
-def gradient_descent(params_measurer, generator, start, target, iterations, weights=None, samples=1):
-    if not weights:
-        weights = [1] * len(start)
-    limit = 0.01
-    alpha = 0.5
-    params = start
+def gradient_descent(params_measurer, params_validator, generator, start, target, iterations, weights=None, samples=1):
+    if weights is None:
+        weights = np.ones(len(start))
+    cost_limit = 0.01
+    step_size = 0.5
+    params = np.array(start, dtype=float)
+    target = np.array(target)
+    hypothesis = np.copy(target)
     for _ in range(iterations):
-        hypothesis = [[] for _ in range(len(params))]
-        for j in range(samples):
-            h = params_measurer(generator(*params))
-            for i, v in enumerate(h):
-                hypothesis[i].append(v)
-        for i, vals in enumerate(hypothesis):
-            hypothesis[i] = statistics.median(vals)
-        cost = max([abs(hypo-targ) / targ for hypo, targ in zip(hypothesis, target)])
+        # Update params based on gradient
+        gradient = hypothesis - target
+        params -= step_size * weights * gradient
+
+        # Validate params, e.g., range checks
+        params = np.array(params_validator(*params), dtype=float)
+
+        # Measure current difference and cost
+        results = np.array([params_measurer(generator(*params)) for _ in range(samples)])
+        hypothesis = np.mean(results, axis=0)
+        cost = np.max(np.abs((hypothesis-target) / target))
         print("Params: {}, result: {}, cost: {}".format(params, hypothesis, cost), file=sys.stderr)
-        if cost < limit:
+        if cost < cost_limit:
             break
-        loss = [hypo-targ for hypo, targ in zip(hypothesis, target)]
-        gradient = loss
-
-        params = [param - weight * alpha * g for weight, param, g in zip(weights, params, gradient)]
     
-    hypothesis = params_measurer(generator(*params))
-    final_cost = max([abs(hypo-targ) / targ for hypo, targ in zip(hypothesis, target)])
-    return params, final_cost
+    return params, cost
 
 
-def generate_er_gd(n, m):
+def generate_er_gd(n, m, iterations=20, samples=5):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
     params = (n, m)
     def generator(n, m):
-        g = generate_er(n, m, False)
+        p = 2*m/(n*(n-1))
+        g = networkit.generators.ErdosRenyiGenerator(n, p).generate()
         g = shrink_to_giant_component(g)
         return g
+
+    def params_validator(n, m):
+        n = max(1, n)
+        m = max(1, m)
+        return n, m
+
     def params_measurer(g):
         n, m = g.size()
         return n, m
-    iterations = 20
-    best_params, cost = gradient_descent(params_measurer, generator, params, params, iterations)
+    best_params, cost = gradient_descent(params_measurer, params_validator, generator, start=params, target=params, samples=samples, iterations=iterations)
     return generator(*best_params)
 
 
 def generate_er(n, m, connected):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
-
-
     if connected:
         fit_iterations = 2
         components = 1
@@ -319,7 +322,7 @@ def generate_er(n, m, connected):
 def fit_er(g, connected=False):
     n, m = g.size()
     
-    return generate_er(n, m, connected)
+    return generate_er_gd(n, m)
 
 
 def generate_ba(n, m, fully_connected_start):
@@ -433,14 +436,26 @@ def fit_chung_lu_constant(g, connected=False):
  
 
 def generate_hyperbolic_gd(n, m, gamma, cc, iterations=20, samples=5):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
     k = (2 * m / n)
     target_params = (n, k, gamma, cc)
     initial_params = (n, k, gamma, 0.5)
-    weights = (1, 1, 1, -1)
+    weights = np.array([1, 1, 1, -1])
+
     def generator(n, k, gamma, t):
         g = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
         g = shrink_to_giant_component(g)
         return g
+
+    def params_validator(n, k, gamma, t):
+        n = max(1, n)
+        k = max(0, k)
+        gamma = max(2.1, gamma)
+        t = np.clip(t, 0.01, 0.99)
+        return n, k, gamma, t
+
     def params_measurer(g):
         n, m = g.size()
         k = (2 * m / n)
@@ -448,7 +463,8 @@ def generate_hyperbolic_gd(n, m, gamma, cc, iterations=20, samples=5):
         gamma = powerlaw_fit(degrees)
         cc = networkit.globals.clustering(g)
         return n, k, gamma, cc
-    best_params, cost = gradient_descent(params_measurer, generator, initial_params, target_params, weights=weights, iterations=iterations, samples=samples)
+
+    best_params, cost = gradient_descent(params_measurer, params_validator, generator, initial_params, target_params, weights=weights, iterations=iterations, samples=samples)
     n, k, gamma, t = best_params
     info_map = [
         ("n", n),
@@ -515,8 +531,6 @@ def generate_hyperbolic(n, m, gamma, cc, connected):
 
 
 def fit_hyperbolic(g):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     alpha = powerlaw_fit(degrees)
     gamma = max(alpha, 2.1)
