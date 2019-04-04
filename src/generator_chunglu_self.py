@@ -16,11 +16,11 @@ from helpers.graph_analysis import analyze, shrink_to_giant_component
 from helpers.generators import generate_chung_lu_constant, fit_chung_lu_constant
 
 def _execute_one_graph(parameters):
-    n, max_deg, k, gamma = parameters
+    n, k, gamma = parameters
 
     graph_type = "parameters"
 
-    name = "CL:n={},max_deg={};k={};gamma={}".format(n, max_deg, k, gamma)
+    name = "CL:n={};k={};gamma={}".format(n, k, gamma)
 
     print("Graph", name)
 
@@ -29,10 +29,10 @@ def _execute_one_graph(parameters):
     model_name = "chung-lu"
 
     try:
-        info, model = "", generate_chung_lu_constant(n, max_deg, k, gamma, connected=True)
+        info, model = generate_chung_lu_constant(n, k, gamma)
         output = analyze(model)
         model = shrink_to_giant_component(model)
-        info2, model2 = fit_chung_lu_constant(model, connected=True)
+        info2, model2 = fit_chung_lu_constant(model)
         output2 = analyze(model2)
     except Exception as e:
         print("Error:", e, "for", model_name, "of", name)
@@ -83,9 +83,8 @@ def main():
     parameters = []
     for n in list(range(1000, 10000, 1000))+list(range(10000, 100000, 10000)):
         for k in [2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5]:
-            max_deg = min(n-1, int(k * 100))
             for gamma in [2.1, 2.3, 2.5, 2.7, 2.9, 3.1]:
-                parameters.append((n, max_deg, k, gamma))
+                parameters.append((n, k, gamma))
 
     generator = GeneratorChungLuSelf(parameters, cores=args.cores)
     generator.execute()

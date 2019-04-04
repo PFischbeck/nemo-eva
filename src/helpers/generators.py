@@ -3,6 +3,7 @@ import bisect
 import itertools
 import math
 import numpy as np
+from scipy import stats
 import networkit
 import sys
 import collections
@@ -244,85 +245,100 @@ def binary_search(goal_f, goal, a, b, f_a=None, f_b=None, depth=0):
     return min([(a, f_a), (b, f_b), (m, f_m)], key=lambda x: x[1])
 
 
-def gradient_descent(params_measurer, params_validator, generator, start, target, iterations, weights=None, samples=1):
-    if weights is None:
-        weights = np.ones(len(start))
-    cost_limit = 0.01
-    step_size = 0.5
-    params = np.array(start, dtype=float)
-    target = np.array(target)
-    hypothesis = np.copy(target)
+def gradient_descent(params_measurer, params_validator, result_mergers, loss_measurers, params_updaters, generator, start, target, iterations, weights=None, samples=1):
+    #if weights is None:
+    #    weights = np.ones(len(start))
+    #cost_limit = 0.01
+    #step_size = 0.5
+    #params = np.array(start, dtype=float)
+    params = list(start)
+    #target = np.array(target)
+    #hypothesis = np.copy(target)
+    hypothesis = list(target)
     for _ in range(iterations):
         # Update params based on gradient
-        gradient = hypothesis - target
-        params -= step_size * weights * gradient
+        #gradient = hypothesis - target
+        #params -= step_size * weights * gradient
+
+        params = [params_updater(param, hypo, targ) for params_updater, param, hypo, targ in zip(params_updaters, params, hypothesis, target)]
 
         # Validate params, e.g., range checks
-        params = np.array(params_validator(*params), dtype=float)
+        params = list(params_validator(*params))
 
         # Measure current difference and cost
-        results = np.array([params_measurer(generator(*params)) for _ in range(samples)])
-        hypothesis = np.mean(results, axis=0)
-        cost = np.max(np.abs((hypothesis-target) / target))
+        results = [params_measurer(generator(*params)) for _ in range(samples)]
+        results = list(map(list, zip(*results)))
+        hypothesis = [merger(vals) for merger, vals in zip(result_mergers, results)]
+        #hypothesis = np.mean(results, axis=0)
+        #cost = np.max(np.abs((hypothesis-target) / target))
+        cost = [loss_measurer(hypo, tar) for loss_measurer, hypo, tar in zip(loss_measurers, hypothesis, target)]
         print("Params: {}, result: {}, cost: {}".format(params, hypothesis, cost), file=sys.stderr)
-        if cost < cost_limit:
-            break
+        #if cost < cost_limit:
+        #    break
     
     return params, cost
 
 
-def generate_er_gd(n, m, iterations=20, samples=5):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
-
-    params = (n, m)
+def generate_er(target_n, target_m, iterations=20, samples=10):
     def generator(n, m):
         p = 2*m/(n*(n-1))
         g = networkit.generators.ErdosRenyiGenerator(n, p).generate()
         g = shrink_to_giant_component(g)
         return g
-
-    def params_validator(n, m):
-        n = max(1, n)
-        m = max(1, m)
-        return n, m
-
-    def params_measurer(g):
-        n, m = g.size()
-        return n, m
-    best_params, cost = gradient_descent(params_measurer, params_validator, generator, start=params, target=params, samples=samples, iterations=iterations)
-    return generator(*best_params)
-
-
-def generate_er(n, m, connected):
-    if connected:
-        fit_iterations = 2
-        components = 1
-        for _ in range(fit_iterations):
-            m_ = m - (components - 1)
-            p = (2*m_)/(n*(n-1))
-            graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
-            comp = networkit.components.ConnectedComponents(graph)
-            comp.run()
-            components = comp.numberOfComponents()
-            
-        m_ = m - (components - 1)
-        p = (2*m_)/(n*(n-1))
-        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
-        make_connected_unweighted(graph)
-        print("{} components, {} out of {} remaining".format(components, m_, m))
     
-    else:
-        p = (2*m)/(n*(n-1))
-        graph = networkit.generators.ErdosRenyiGenerator(n, p).generate()
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
 
-    return graph
+    step_size = 1.0
+    loss_limit = 0.01
+
+    n = target_n
+    m = target_m
+
+    for i in range(iterations):
+        n_ = []
+        m_ = []
+        for _ in range(samples):
+            g = generator(n, m)
+            measured_n, measured_m = g.size()
+            n_.append(measured_n)
+            m_.append(measured_m)
+        
+        avg_n = sum(n_) / samples
+        avg_m = sum(m_) / samples
+
+        loss_n = abs(avg_n - target_n) / target_n
+        loss_m = abs(avg_m - target_m) / target_m
+
+        print("Loss: {} {}".format(loss_n, loss_m))
+
+        if loss_n <= loss_limit and loss_m <= loss_limit:
+            break
+
+        if i < iterations-1:
+            n += step_size * (target_n - avg_n)
+            m += step_size * (target_m - avg_m)
+            step_size *= 0.9
+
+            n = max(1, n)
+            m = max(1, m)
+
+    info_map = [
+        ("n", n),
+        ("m", m),
+        ("loss_n", loss_n),
+        ("loss_m", loss_m)
+    ]
+    
+    info = "|".join([name + "=" + str(val) for name, val in info_map])
+
+    return info, generator(n, m)
 
 
-def fit_er(g, connected=False):
+def fit_er(g):
     n, m = g.size()
     
-    return generate_er_gd(n, m)
+    return generate_er(n, m)
 
 
 def generate_ba(n, m, fully_connected_start):
@@ -366,52 +382,109 @@ def fit_ba(g, fully_connected_start):
     return generate_ba(n, m, fully_connected_start)
 
 
-def generate_chung_lu(degrees, connected):
+def generate_chung_lu(n, degrees, iterations=20, samples=5):
     random.seed(42, version=2)
     networkit.setSeed(seed=42, useThreadId=False)
 
-    degrees.sort(reverse=True)
+    initial_params = (n, degrees)
+    target_params = (n, degrees)
 
-    if connected:
-        fit_iterations = 2
-        components = 1
-        for _ in range(fit_iterations):
-            # (Fairly) reduce degrees of high-degree vertices
-            new_degrees = degrees.copy()
-            diff = (components-1)*2
-            while diff:
-                pos = random.randrange(len(new_degrees))
-                if new_degrees[pos] > 0: 
-                    new_degrees[pos] -= 1
-                    diff -= 1
-            graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
-            comp = networkit.components.ConnectedComponents(graph)
-            comp.run()
-            components = comp.numberOfComponents()
-            
-        new_degrees = degrees.copy()
-        diff = (components-1)*2
-        while diff:
-            pos = random.randrange(len(new_degrees))
-            if new_degrees[pos] > 0: 
-                new_degrees[pos] -= 1
-                diff -= 1
-        graph = networkit.generators.ChungLuGenerator(new_degrees).generate()
-        make_connected_weighted(graph)
-        return graph
-    else:
-        return networkit.generators.ChungLuGenerator(degrees).generate()
+    def generator(n, degrees):
+        n = int(n)
+        degree_sequence = random.choices(degrees, k=n)
+        g = networkit.generators.ChungLuGenerator(degree_sequence).generate()
+        g = shrink_to_giant_component(g)
+        return g
+
+    def params_validator(n, degrees):
+        n = max(1, n)
+        # TODO Validate degrees?
+        return n, degrees
+
+    def params_measurer(g):
+        measured_n, _ = g.size()
+        degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+        return measured_n, degrees
+
+    def degrees_merger(degree_lists):
+        # Make sure all have the same length
+        longest = max(map(len, degree_lists))
+        for deg_list in degree_lists:
+            deg_list.extend([0] * (longest - len(deg_list)))
+
+        merged = np.round(np.mean(np.array([np.array(deg_list) for deg_list in degree_lists]), axis=0))
+        return sorted(list(merged), reverse=True)
+
+    result_mergers = [np.mean, degrees_merger]
+
+    def standard_loss(hypothesis, target):
+        return np.abs((hypothesis-target) / target)
+
+    def degree_loss(hypothesis, target):
+        statistic, p_value = stats.ks_2samp(hypothesis, target)
+        return statistic
+
+    loss_measurers = [standard_loss, degree_loss]
+    step_size = 0.5
+
+    params_updaters = [lambda n, hypo, target: n - step_size * (hypo-target), lambda degs, hypo, target: degs]
 
 
-def generate_chung_lu_constant(n, max_deg, k, gamma, connected):
-    degree_sequence = powerlaw_generate(n, max_deg, k, gamma)
-    graph = generate_chung_lu(degree_sequence, connected)
+    best_params, cost = gradient_descent(result_mergers=result_mergers, loss_measurers=loss_measurers, params_updaters=params_updaters, params_measurer=params_measurer, params_validator=params_validator, generator=generator, start=initial_params, target=target_params, iterations=iterations, samples=samples)
+    n, degrees = best_params
 
-    return graph
+    info_map = [
+        ("n", n)#,
+        #("m", m)
+    ]
+    
+    info = "|".join([name + "=" + str(val) for name, val in info_map])
+    return info, generator(*best_params)
 
-def fit_chung_lu(g, connected=False):
+def generate_chung_lu_constant(n, k, gamma, iterations=20, samples=5):
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
+    initial_params = (n, k, gamma)
+    target_params = (n, k, gamma)
+
+    def generator(n, k, gamma):
+        n = int(n)
+        degree_sequence = powerlaw_generate(n, k, gamma)
+        g = networkit.generators.ChungLuGenerator(degree_sequence).generate()
+        g = shrink_to_giant_component(g)
+        return g
+
+    def params_validator(n, k, gamma):
+        n = max(1, n)
+        k = max(0, k)
+        gamma = max(2.1, gamma)
+        return n, k, gamma
+
+    def params_measurer(g):
+        n, m = g.size()
+        k = (2 * m / n)
+        degrees = networkit.centrality.DegreeCentrality(g).run().scores()
+        gamma = powerlaw_fit(degrees)
+        return n, k, gamma
+
+    best_params, cost = gradient_descent(params_measurer, params_validator, generator, initial_params, target_params, iterations=iterations, samples=samples)
+    n, k, gamma = best_params
+
+    info_map = [
+        ("n", n),
+        ("k", k),
+        ("gamma", gamma)
+    ]
+    
+    info = "|".join([name + "=" + str(val) for name, val in info_map])
+    return info, generator(*best_params)
+
+
+def fit_chung_lu(g):
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
-    return generate_chung_lu(degrees, connected)
+    n, m = g.size()
+    return generate_chung_lu(n, degrees)
 
 
 def fit_chung_lu_constant(g, connected=False):
@@ -420,19 +493,11 @@ def fit_chung_lu_constant(g, connected=False):
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
     alpha = powerlaw_fit(degrees)
     gamma = max(alpha, 2.1)
-    
-    k = 2 * g.numberOfEdges() / g.numberOfNodes()
-       
-    graph = generate_chung_lu_constant(g.numberOfNodes(), max(degrees), k, gamma, connected)
-    
-    info_map = [
-        ("n", g.numberOfNodes()),
-        ("gamma", gamma),
-        ("k", k)
-    ]
-    
-    info = "|".join([name + "=" + str(val) for name, val in info_map])
-    return (info, graph)
+
+    n, m = g.size()
+    k = 2 * m / n
+
+    return generate_chung_lu_constant(n, k, gamma)
  
 
 def generate_hyperbolic_gd(n, m, gamma, cc, iterations=20, samples=5):
