@@ -6,9 +6,11 @@ import sys
 import random
 import math
 
-#def powerlaw_fit(degrees):
-#    fit = powerlaw.Fit(degrees, fit_method='Likelihood', verbose=False)
-#    return fit.alpha
+def powerlaw_fit_alt(degrees):
+    fit = powerlaw.Fit(degrees, fit_method='Likelihood', verbose=False)
+    alpha = fit.alpha
+    alpha = max(alpha, 2.1)
+    return alpha
 
 
 def powerlaw_fit(degrees):

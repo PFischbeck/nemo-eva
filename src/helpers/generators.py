@@ -7,10 +7,10 @@ from scipy import stats
 import networkit
 import sys
 import collections
-import pygirgs
+#import pygirgs
 
 from helpers.graph_analysis import shrink_to_giant_component
-from helpers.powerlaw_estimation import powerlaw_fit, powerlaw_generate
+from helpers.powerlaw_estimation import powerlaw_fit, powerlaw_fit_alt, powerlaw_generate
 
 
 # taken from https://gist.github.com/SofiaGodovykh/18f60a3b9b3e6812c071456f61f9c5a6
@@ -500,100 +500,85 @@ def fit_chung_lu_constant(g, connected=False):
     return generate_chung_lu_constant(n, k, gamma)
  
 
-def generate_hyperbolic_gd(n, m, gamma, cc, iterations=20, samples=5):
-    random.seed(42, version=2)
-    networkit.setSeed(seed=42, useThreadId=False)
-
-    k = (2 * m / n)
-    target_params = (n, k, gamma, cc)
-    initial_params = (n, k, gamma, 0.5)
-    weights = np.array([1, 1, 1, -1])
-
-    def generator(n, k, gamma, t):
+def generate_hyperbolic(target_n, target_m, target_gamma, target_cc, iterations=20, samples=10):
+    def generator(n, m, gamma, t):
+        k = (2 * m / n)
         g = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
         g = shrink_to_giant_component(g)
         return g
-
-    def params_validator(n, k, gamma, t):
-        n = max(1, n)
-        k = max(0, k)
-        gamma = max(2.1, gamma)
-        t = np.clip(t, 0.01, 0.99)
-        return n, k, gamma, t
-
+    
     def params_measurer(g):
         n, m = g.size()
-        k = (2 * m / n)
         degrees = networkit.centrality.DegreeCentrality(g).run().scores()
-        gamma = powerlaw_fit(degrees)
+        gamma = powerlaw_fit_alt(degrees)
         cc = networkit.globals.clustering(g)
-        return n, k, gamma, cc
+        return n, m, gamma, cc
 
-    best_params, cost = gradient_descent(params_measurer, params_validator, generator, initial_params, target_params, weights=weights, iterations=iterations, samples=samples)
-    n, k, gamma, t = best_params
+
+    random.seed(42, version=2)
+    networkit.setSeed(seed=42, useThreadId=False)
+
+    step_size = 1.0
+    loss_limit = 0.01
+
+    n = target_n
+    m = target_m
+    gamma = target_gamma
+    t = 0.5
+
+    for i in range(iterations):
+        n_ = []
+        m_ = []
+        gamma_ = []
+        cc_ = []
+        for _ in range(samples):
+            g = generator(n, m, gamma, t)
+            measured_n, measured_m, measured_gamma, measured_cc = params_measurer(g)
+            n_.append(measured_n)
+            m_.append(measured_m)
+            gamma_.append(measured_gamma)
+            cc_.append(measured_cc)
+        
+        avg_n = sum(n_) / samples
+        avg_m = sum(m_) / samples
+        avg_gamma = sum(gamma_) / samples
+        avg_cc = sum(cc_) / samples
+
+        loss_n = abs(avg_n - target_n) / target_n
+        loss_m = abs(avg_m - target_m) / target_m
+        loss_gamma = abs(avg_gamma - target_gamma) / (target_gamma - 2.0)
+        loss_cc = abs(avg_cc - target_cc) / target_cc
+
+        print("Loss: {} {} {} {}".format(loss_n, loss_m, loss_gamma, loss_cc))
+        print(n, m, gamma, t)
+        if loss_n <= loss_limit and loss_m <= loss_limit and loss_gamma <= loss_limit and loss_cc <= loss_limit:
+            break
+
+        if i < iterations-1:
+            n += step_size * (target_n - avg_n)
+            m += step_size * (target_m - avg_m)
+            gamma += step_size * (target_gamma - avg_gamma)
+            t += step_size * (target_cc - avg_cc) * -1 # Reverse direction here, since higher t means lower cc!
+            step_size *= 0.9
+
+            n = max(1, n)
+            m = max(1, m)
+            gamma = max(2.1, gamma)
+            t = np.clip(t, 0.01, 0.99)
+
     info_map = [
         ("n", n),
-        ("k", k),
+        ("m", m),
         ("gamma", gamma),
         ("t", t),
-        ("cost", cost)
+        ("loss_n", loss_n),
+        ("loss_m", loss_m),
+        ("loss_gamma", loss_gamma),
+        ("loss_cc", loss_cc)
     ]
     info = "|".join([name + "=" + str(val) for name, val in info_map])
-    print("Final cost: {}".format(cost), file=sys.stderr)
-    return info, generator(*best_params)
-
-
-def generate_hyperbolic(n, m, gamma, cc, connected):
-    def criterium(h):
-        val = networkit.globals.clustering(h)
-        return val
-
-
-    def guess_goal(t):
-        iterations = 10
-        results = []
-        for _ in range(iterations):
-            hyper_t = networkit.generators.HyperbolicGenerator(
-                n, k, gamma, t).generate()
-            if connected:
-                make_connected_weighted(hyper_t)
-            hyper_t = shrink_to_giant_component(hyper_t)
-            results.append(criterium(hyper_t))
-        return sum(results)/len(results)
     
-
-    if connected:
-        fit_iterations = 2
-        components = 1
-        for _ in range(fit_iterations):
-            m_ = m - (components - 1)
-            k = 2 * m_ / n
-            t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
-            hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
-            comp = networkit.components.ConnectedComponents(hyper)
-            comp.run()
-            components = comp.numberOfComponents()
-            
-        m_ = m - (components - 1)
-        k = 2 * m_ / n
-        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
-        hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
-        print("{} components, {} out of {} remaining".format(components, m_, m))
-        make_connected_weighted(hyper)
-    else:
-        k = 2 * m / n
-        t, crit_diff = binary_search(guess_goal, cc, 0.01, 0.99)
-        hyper = networkit.generators.HyperbolicGenerator(n, k, gamma, t).generate()
-    
-    info_map = [
-        ("n", n),
-        ("k", k),
-        ("gamma", gamma),
-        ("t", t)
-    ]
-    info = "|".join([name + "=" + str(val) for name, val in info_map])
-    return (info, hyper)
-
+    return info, generator(n, m, gamma, t)
 
 def fit_hyperbolic(g):
     degrees = networkit.centrality.DegreeCentrality(g).run().scores()
